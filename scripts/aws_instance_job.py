@@ -101,7 +101,7 @@ def run(cfg, number):
             env={'PATH':'/home/agentlab/.local/bin:/usr/local/bin:/usr/bin:/bin','HOME':'/home/agentlab',
                  'PYTHONPATH':'/opt/agent-security-demo','ANTHROPIC_API_KEY':secret,'LANG':'en_US.UTF-8'}
             try:
-                subprocess.run(['runuser','-u','agentlab','--','python3','-m','agent.aws_worker',
+                subprocess.run(['/usr/sbin/runuser','-u','agentlab','--','python3','-m','agent.aws_worker',
                     '--config',CONFIG,'--run-id',meta['run_id']],cwd='/opt/agent-security-demo',
                     env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
                     timeout=int(cfg['timeout_seconds'])+60,check=True)
