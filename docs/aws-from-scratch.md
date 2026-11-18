@@ -107,6 +107,7 @@ python3 -m scripts.aws_admin init
 terraform -chdir=infrastructure/aws init
 terraform -chdir=infrastructure/aws fmt -check
 terraform -chdir=infrastructure/aws validate
+terraform -chdir=infrastructure/aws test
 terraform -chdir=infrastructure/aws plan -out=lab.tfplan
 ```
 
@@ -325,7 +326,8 @@ Terraform state first. Do not run a destroy plan against unrelated infrastructur
 - [GitHub OIDC immutable subject claims](https://docs.github.com/en/actions/reference/security/oidc)
 - [Official Claude Code installation](https://code.claude.com/docs/en/setup)
 
-Offline tests and Terraform validation are not live AWS acceptance tests. After the
+The Terraform test uses a mock provider, including its simulated apply/teardown;
+it makes no AWS API calls. Offline tests and validation are not live AWS acceptance tests. After the
 first deployment, preserve one authentic run of each condition and verify GitHub
 approval, A delivery, any B decision, private receipts and teardown before presenting
 the AWS setup as tested.

@@ -54,9 +54,9 @@ is a client estimate, not a verified invoice.
 | Actual CLI/MCP initialization | MCP lab server connected; sole exposed tool was the lab reader | Authentic stream |
 | Initial unauthenticated attempt | missing_anthropic_api_key; zero model cost reported | Preserved readiness failure, excluded from authenticated-model denominator |
 | Dashboard browser QA | Real agent records displayed, scenario selection, empty view and clearly marked replay/playback verified | Local browser UI |
-| GitHub workflow | Not run; GitHub CLI unauthenticated and no controlled repository selected | Unverified |
+| Local-stage GitHub workflow | Not exercised during the model cohort; see AWS kit update below | Historical scope |
 | Native WebFetch origin | Not measured; no public controlled domains configured | Unknown |
-| Public HTTPS/AWS | Deferred per user's local-first instruction | Not deployed |
+| Public HTTPS/AWS | Not deployed during this local cohort | Not established |
 
 The first sandboxed test attempt could not bind Unix sockets. The authorized
 local tests then exposed an endpoint audit-argument bug, corrected before the
@@ -70,6 +70,11 @@ is checked for the configured key's presence before export; key/certificate file
 and runtime directories are excluded from the source archive.
 
 ## Authentic retained records
+
+The original private delivery includes these records. They are deliberately excluded
+from the public repository, along with local credentials, machine paths and runtime
+data. The descriptive results above are unchanged; no AWS result has been added to
+the local cohort.
 
 All 24 authenticated runs, the initial authentication failure and the deterministic
 connectivity run are under `validation/runs/`, with original JSONL, run metadata,
@@ -107,5 +112,21 @@ uses content extraction and may have a different request path.
 The GitHub wrapper and workflow are implemented but must still be exercised in a
 controlled repository. Full workflow-start/failure reliability needs Actions-side
 observations, because jobs that fail before the wrapper starts leave no local
-trial record. AWS deployment remains intentionally deferred. No gateway
-implementation or simulated gateway is present.
+trial record. AWS deployment is prepared as a separate kit; it has not been exercised live. No
+gateway implementation or simulated gateway is present.
+
+## AWS kit preparation update — 2026-11-18
+
+The public repository `pasiripu/agent-security-demo` now contains an approval-gated
+GitHub-hosted dispatcher, EC2/SSM worker, public diagnostic/receiver Lambdas, private
+S3/DynamoDB evidence, Terraform and operator scripts. Its `demo` environment requires
+`pasiripu` as reviewer. Paid runs remain disabled until AWS configuration is complete.
+
+The expanded local suite has **34 passing software tests**. Terraform 1.13.5 with
+AWS provider 6.73.0 passes validation and one mock-provider lifecycle test. The latter
+checks the resource graph and security properties without AWS API calls. This does
+not establish deployment, public agent retrieval or GitHub-to-AWS triage success.
+The first hosted CI run exposed a Python 3.14 Content-Length EOF handling bug; the
+reader now stops when the HTTP response is closed, with a dedicated regression test.
+
+Follow [AWS from scratch](aws-from-scratch.md) for real deployment and acceptance runs.

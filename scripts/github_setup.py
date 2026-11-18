@@ -43,6 +43,7 @@ def stage(destination):
     for rel,source in public_files():
         data=source.read_bytes()
         if secret and secret.encode() in data: raise RuntimeError('Secret detected; public staging aborted')
+        if str(Path.home()).encode() in data: raise RuntimeError('Private home path detected; public staging aborted')
         target=destination/rel; target.parent.mkdir(parents=True,exist_ok=True); target.write_bytes(data)
     return destination
 
@@ -84,6 +85,12 @@ def publish():
     repo=gh('repos/'+REPO); protect(REPO,repo['owner']['id'])
     # Reuse a local checkout for updates; never force-push or overwrite unrelated remote work.
     checkout=ROOT/'infrastructure/aws/.build/public-source'
+    remote='https://github.com/'+REPO+'.git'
+    if not checkout.exists():
+        checkout.parent.mkdir(parents=True,exist_ok=True)
+        heads=subprocess.run(['git','ls-remote','--heads',remote,'main'],check=True,capture_output=True,text=True)
+        if heads.stdout.strip():
+            subprocess.run(['git','clone','--single-branch','--branch','main',remote,str(checkout)],check=True)
     if checkout.exists():
         subprocess.run(['git','-C',str(checkout),'pull','--ff-only'],check=True)
         temp=Path(tempfile.mkdtemp(prefix='public-review-'))/'source'
@@ -98,7 +105,7 @@ def publish():
         checkout.parent.mkdir(parents=True,exist_ok=True)
         stage(checkout)
         subprocess.run(['git','init','-b','main',str(checkout)],check=True)
-        subprocess.run(['git','-C',str(checkout),'remote','add','origin','https://github.com/'+REPO+'.git'],check=True)
+        subprocess.run(['git','-C',str(checkout),'remote','add','origin',remote],check=True)
     # Bot identity is local to this demo checkout; user's global Git config is untouched.
     subprocess.run(['git','-C',str(checkout),'config','user.name','Agent Security Demo'],check=True)
     subprocess.run(['git','-C',str(checkout),'config','user.email','68029303+pasiripu@users.noreply.github.com'],check=True)

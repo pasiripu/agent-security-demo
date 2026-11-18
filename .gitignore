@@ -8,6 +8,7 @@ data/
 *.tfstate*
 .terraform/
 *.tfvars
+*.tfvars.json
 *.tfplan
 .build/
 aws-data/

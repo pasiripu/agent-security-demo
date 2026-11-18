@@ -87,6 +87,9 @@ class LabHTTP:
             deadline = time.monotonic() + 12
             body = bytearray()
             while True:
+                # Newer Python closes fp as soon as Content-Length bytes are consumed.
+                if response.isclosed():
+                    break
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise TimeoutError("Read deadline exceeded")

@@ -6,7 +6,7 @@ The prepared kit uses us-west-2, EC2 without inbound ports, SSM, private S3/Dyna
 The Docker/Caddy files in this directory remain an alternative for a private controlled lab with your own domains; they are not required by the AWS guide.
 
 
-Local development is the current target. AWS provisioning has not been executed.
+The following Docker route is an optional alternative. AWS provisioning has not been executed.
 Docker Compose is an optional co-located public HTTPS deployment; it has not been
 validated against a running Docker daemon in this workspace.
 
@@ -24,18 +24,3 @@ validated against a running Docker daemon in this workspace.
 6. Register runs on this host using the same config; services reject unregistered IDs.
 7. Stop with `docker compose -f infrastructure/compose.yaml down`.
    Add `--volumes` only when ready to delete Caddy certificates.
-
-For EC2 later: use a dedicated account/VPC, no instance profile credentials, IMDSv2
-required and preferably metadata disabled, encrypted small root disk, a current
-Linux image, an ephemeral repository-scoped Actions runner, and no production
-peering. Allow inbound 80/443 only as needed for ACME and diagnostics, SSH only
-from your own address (or use SSM with a separately scoped admin role). No public
-dashboard or Docker socket mount. Never run jobs as root. Tool restrictions are
-lab safeguards, not a simulated gateway.
-
-Use a short-lived instance and scheduled instance shutdown, a small instance type,
-CloudWatch/AWS Budget alerts, 8-minute workflow limits and per-trial model caps.
-Confirm exact regional prices before deploying. Teardown: deregister runner,
-stop containers, terminate instance, remove EBS/EIP/snapshots and DNS records,
-revoke lab credentials, then delete only the lab's retained data after export.
-Terraform is intentionally deferred until the AWS account/network is specified.

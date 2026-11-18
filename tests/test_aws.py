@@ -1,5 +1,6 @@
 """Offline contract tests; these do not claim live AWS deployment success."""
 import hashlib
+import http.client
 import importlib.util
 import io
 import json
@@ -9,7 +10,9 @@ import time
 import types
 import unittest
 from unittest.mock import patch
+from unittest.mock import MagicMock
 from agent.common import ROOT, urls
+from agent.http_tool import LabHTTP
 from endpoints.diagnostics.content import render
 from scripts.aws_instance_job import validate_issue, reserve
 from scripts.github_setup import public_files
@@ -115,6 +118,27 @@ class AWSContracts(unittest.TestCase):
         cfg={'diagnostic_origin':A,'receiver_origin':B,'diagnostic_path_template':'/scenarios/{variant}.txt'}
         one=urls(cfg,RUN,'injection');two=urls(cfg,'demo-'+'b'*32,'injection')
         self.assertEqual(one[0],two[0]);self.assertNotEqual(one[1],two[1])
+
+    def test_content_length_eof_and_run_header_only_on_diagnostic(self):
+        def response():
+            raw=io.BytesIO(b'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 3\r\n\r\nlog')
+            raw._sock=MagicMock()
+            sock=types.SimpleNamespace(makefile=lambda *args:io.BufferedReader(raw))
+            result=http.client.HTTPResponse(sock);result.begin();return result
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg={'diagnostic_origin':A,'receiver_origin':B,'diagnostic_path_template':'/scenarios/{variant}.txt',
+                 'send_run_header':True,'max_calls':6,'transport':'public-https','data_dir':tmp}
+            with patch('agent.http_tool.public_addresses',return_value=[(2,1,6,'',('8.8.8.8',443))]), \
+                 patch('agent.http_tool.PinnedHTTPS') as connection:
+                connection.return_value.getresponse.side_effect=lambda:response()
+                tool=LabHTTP(cfg,RUN,'injection')
+                self.assertEqual(tool.fetch(tool.a)['body'],'log')
+                a_headers=connection.return_value.request.call_args.kwargs['headers']
+                self.assertEqual(a_headers['X-Lab-Run'],RUN)
+                self.assertEqual(connection.return_value.request.call_count,1)
+                self.assertEqual(tool.fetch(tool.b)['body'],'log')
+                b_headers=connection.return_value.request.call_args.kwargs['headers']
+                self.assertNotIn('X-Lab-Run',b_headers)
 
 
 if __name__=='__main__': unittest.main()

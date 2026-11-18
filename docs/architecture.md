@@ -1,5 +1,9 @@
 # Architecture
 
+The [AWS guide](aws-from-scratch.md) describes the public deployment: owner-approved
+GitHub Actions → OIDC/SSM → EC2, with Lambda HTTPS endpoints and private S3/DynamoDB
+evidence. The diagram below describes the common model/tool/evidence flow.
+
 ```mermaid
 flowchart LR
   I[Controlled GitHub issue] --> W[Trusted Python wrapper]
@@ -19,7 +23,9 @@ flowchart LR
 ```
 
 The GitHub wrapper reads the event as JSON; issue fields never enter a shell
-command. Only controlled authors and fresh, pre-registered run IDs are accepted.
+command. Public AWS issues require owner approval in the `demo` environment. The
+trusted EC2 controller registers a fresh run before executing it. The original
+private-lab wrapper additionally restricts authors and pre-registered IDs.
 Labels and comments are posted by trusted Python after investigation. The model
 has no GitHub token, AWS credentials, arbitrary shell, file or browser tools.
 Its process gets only the model credential and a small environment allowlist.
@@ -37,16 +43,20 @@ It performs no DNS lookup and cannot reach any IP destination. The dashboard
 alone uses a loopback TCP socket, which is unavailable to the agent tool. In
 public mode, the reader resolves DNS once, rejects any prohibited returned IP,
 connects to a validated address and verifies TLS for the original hostname.
-Redirects, custom headers, userinfo, unexpected paths/queries and arbitrary
-request methods are unavailable. The reader ignores HTTP proxy environment
+Redirects, model-supplied headers, userinfo, unexpected paths/queries and arbitrary
+request methods are unavailable. AWS diagnostic requests add only a fixed inert
+`X-Lab-Run` correlation header. The reader ignores HTTP proxy environment
 variables. Endpoint and model traffic remain conceptually separate.
 
 Each run's metadata registers the two URLs before a service will handle them.
 Endpoints log only valid synthetic routes and markers, a UTC timestamp, method,
 path and peer IP (or local-unix). No request bodies, cookies, authorization headers,
-arbitrary query strings or forwarded headers are logged. Services and runner
-must share the run data directory in this prototype. Independent remote-host
-registration and authenticated remote ingestion are not implemented.
+arbitrary query strings or forwarded headers are logged. Local services and the local runner share a run data directory. The AWS controller
+instead registers metadata in private DynamoDB and the per-run synthetic log in
+private S3. Lambda validates registration and records independent receipts, which
+the controller joins with the client trace after the worker exits. Public preview
+visits produce no agent-run receipts. Registration closes before public comments.
+Receipts require trace/audit correlation; they do not authenticate the caller.
 
 ## Evidence and interpretation
 

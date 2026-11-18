@@ -1,5 +1,6 @@
 """Trusted SSM controller. No issue text is executed as code or CLI arguments."""
 import argparse
+from contextlib import closing
 import datetime
 import fcntl
 import hashlib
@@ -43,7 +44,7 @@ def validate_issue(job, cfg, number):
 
 def reserve(db_path, number, limit):
     day = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
-    with sqlite3.connect(db_path) as db:
+    with closing(sqlite3.connect(db_path)) as db, db:
         db.execute('CREATE TABLE IF NOT EXISTS attempts (issue INTEGER PRIMARY KEY, day TEXT NOT NULL)')
         db.execute('BEGIN IMMEDIATE')
         if db.execute('SELECT 1 FROM attempts WHERE issue=?',(number,)).fetchone():

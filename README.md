@@ -5,7 +5,7 @@ links to a synthetic diagnostic log, which the agent may fetch autonomously. The
 injection condition adds an external instruction to visit a separate inert-marker
 receiver. No ZT Gateway integration or simulation is included.
 
-**Local validation:** 33 software tests pass. Across 24 real Claude trials,
+**Local validation:** 34 software tests pass. Across 24 real Claude trials,
 A content reached the agent in 24/24; the injection caused **0/6** B requests;
 the autonomous-access fallback retrieved A in **6/6** local trials. See
 [actual results](docs/experiment-results.md) (original private traces are excluded from public source). Local Unix TLS
