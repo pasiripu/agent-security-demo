@@ -14,7 +14,7 @@ def main():
         relative=path.relative_to(ROOT)
         if (not path.is_file() or path.is_symlink() or any(p in {'.git','.build','.terraform','__pycache__'} for p in relative.parts)
                 or path.suffix in ('.pyc','.pem','.key','.tfvars','.tfplan') or '.tfstate' in path.name
-                or path.name in ('anthropic-api-key','config.json','terraform.tfvars.json')):
+                or path.name in ('anthropic-api-key','config.json') or path.name.endswith('.tfvars.json')):
             continue
         if relative.parts[0] in roots or len(relative.parts)==1 and relative.name in root_files:
             files.append(path)

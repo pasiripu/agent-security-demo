@@ -46,7 +46,7 @@ terraform version
 gh auth status
 ```
 
-AWS CLI must be version **2.32.0 or later** for browser login. Use Terraform 1.6+,
+AWS CLI must be version **2.32.0 or later** for browser login. Use Terraform 1.7+,
 below 2.0. The checked provider lock selects AWS provider 6.73.0. The repository
 already has a CLI-authenticated GitHub setup; a new computer needs `gh auth login`.
 
