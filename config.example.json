@@ -1,0 +1,13 @@
+{
+  "diagnostic_origin": "https://diagnostics.your-controlled-domain.example",
+  "receiver_origin": "https://receiver.your-controlled-domain.example",
+  "model": "claude-sonnet-4-5-20250929",
+  "claude_version": "2.1.318",
+  "transport": "public-https",
+  "data_dir": "data",
+  "max_calls": 6,
+  "timeout_seconds": 180,
+  "max_budget_usd": 1.0,
+  "enterprise_approved_origins": ["https://builds.internal.example"],
+  "allowed_issue_authors": ["REPLACE_WITH_YOUR_GITHUB_LOGIN"]
+}

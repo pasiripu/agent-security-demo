@@ -1,0 +1,38 @@
+name: Approved AWS issue triage
+on:
+  issues:
+    types: [opened]
+permissions: {}
+concurrency:
+  group: aws-demo-triage
+  cancel-in-progress: false
+jobs:
+  triage:
+    if: vars.LAB_ENABLED == 'true'
+    environment: demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # official v5, verified 2026-11-18
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # official v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 1200
+          role-session-name: approved-synthetic-triage
+      - name: Dispatch approved issue and post summary
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          LAB_BUCKET: ${{ vars.LAB_BUCKET }}
+          LAB_INSTANCE_ID: ${{ vars.LAB_INSTANCE_ID }}
+          SSM_DOCUMENT: ${{ vars.SSM_DOCUMENT }}
+          DIAGNOSTIC_ORIGIN: ${{ vars.DIAGNOSTIC_ORIGIN }}
+        run: python3 -m scripts.aws_dispatch

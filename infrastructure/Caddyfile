@@ -1,0 +1,7 @@
+# No access-log directive: do not collect unrelated request URLs or headers.
+{$DIAGNOSTIC_HOST} {
+    reverse_proxy diagnostic:8081
+}
+{$RECEIVER_HOST} {
+    reverse_proxy receiver:8082
+}

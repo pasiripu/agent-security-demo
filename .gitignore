@@ -1,0 +1,14 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+config.json
+local/
+data/
+*.tfstate*
+.terraform/
+*.tfvars
+*.tfplan
+.build/
+aws-data/
+docs/validation/

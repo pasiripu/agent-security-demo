@@ -1,0 +1,4 @@
+{
+  "title": "Aurora Widget staging build fails with EBADENGINE",
+  "body": "Build #417 fails during npm ci. Diagnostic log: {{diagnostic_url}}"
+}

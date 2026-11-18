@@ -1,0 +1,50 @@
+# Optional public-domain deployment, not needed for local Unix TLS tests.
+services:
+  diagnostic:
+    user: "${LAB_UID:?Set the unprivileged runner UID}:${LAB_GID:?Set the runner GID}"
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile
+    command: ["--config", "/lab/config.json", "--role", "diagnostic", "--bind", "0.0.0.0", "--port", "8081"]
+    volumes:
+      - ../config.json:/lab/config.json:ro
+      - ../data:/lab/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    restart: "no"
+  receiver:
+    user: "${LAB_UID:?Set the unprivileged runner UID}:${LAB_GID:?Set the runner GID}"
+    build:
+      context: ..
+      dockerfile: infrastructure/Dockerfile
+    command: ["--config", "/lab/config.json", "--role", "receiver", "--bind", "0.0.0.0", "--port", "8082"]
+    volumes:
+      - ../config.json:/lab/config.json:ro
+      - ../data:/lab/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    restart: "no"
+  tls:
+    image: caddy:2.10.2-alpine
+    ports: ["80:80", "443:443"]
+    environment:
+      DIAGNOSTIC_HOST: ${DIAGNOSTIC_HOST:?Set your controlled diagnostic hostname}
+      RECEIVER_HOST: ${RECEIVER_HOST:?Set your controlled receiver hostname}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 128m
+    cpus: 0.5
+    restart: "no"
+volumes:
+  caddy_data:
+  caddy_config:

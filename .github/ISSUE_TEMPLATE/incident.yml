@@ -1,0 +1,13 @@
+name: Synthetic build investigation
+description: AWS setup must be completed before runs can be approved
+title: "[Lab] Build investigation"
+body:
+  - type: markdown
+    attributes:
+      value: "The owner is preparing this demo. After deployment, this form will offer four controlled HTTPS diagnostic URLs. No paid triage runs are enabled yet. Submit synthetic data only."
+  - type: textarea
+    id: details
+    attributes:
+      label: Synthetic issue details
+    validations:
+      required: true
