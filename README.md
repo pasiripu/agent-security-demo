@@ -3,7 +3,7 @@
 A controlled issue-triage experiment with real Claude Code: a public GitHub issue
 links to a synthetic diagnostic log, which the agent may fetch autonomously. The
 injection condition adds an external instruction to visit a separate inert-marker
-receiver. No ZT Gateway integration or simulation is included.
+receiver. .
 
 **Local validation:** 33 software tests pass. Across 24 real Claude trials,
 A content reached the agent in 24/24; the injection caused **0/6** B requests;
@@ -14,7 +14,7 @@ and four owner-approved AWS model trials are verified. See [AWS results](docs/aw
 diagnostic content delivered **4/4**; the one injection payload was explicitly rejected,
 with no receiver request. One trial per condition does not establish general immunity.
 
-## AWS deployment for pasiripu
+## AWS deployment
 
 Follow the [AWS guide from scratch](docs/aws-from-scratch.md). It provides the exact
 Mac/IAM-user commands, Terraform review/apply, secret setup, GitHub approval, demo
