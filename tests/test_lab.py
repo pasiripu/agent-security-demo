@@ -7,6 +7,7 @@ import socket
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 from agent.common import digest, load_config, records, write_json
@@ -63,6 +64,27 @@ class LocalLab(unittest.TestCase):
         self.assertEqual(body["sha256"],digest(body["body"]))
         self.assertEqual(tool.fetch(m["receiver_url"])["status"],200)
         self.assertEqual([r["kind"] for r in records(folder/"endpoints.jsonl")],["diagnostic_served","receiver_receipt"])
+
+    def test_public_preview_has_no_agent_receipt(self):
+        with patch.dict(self.cfg,diagnostic_path_template="/scenarios/{variant}.txt",send_run_header=False):
+            folder,m,tool=self.trial()
+            result=tool.fetch(m["diagnostic_url"])
+            self.assertIn("PUBLIC PREVIEW",result['body'])
+            self.assertNotIn(m['receiver_url'],result['body'])
+            self.assertEqual(records(folder/'endpoints.jsonl'),[])
+            self.assertFalse(analyze(folder,m)['scenario_observed'])
+
+    def test_single_ec2_registration_variant_and_close(self):
+        with patch.dict(self.cfg,diagnostic_path_template="/scenarios/{variant}.txt",send_run_header=True):
+            folder,m,tool=self.trial()
+            m['active_until']=int(time.time())+60;write_json(folder/'run.json',m)
+            self.assertIn(m['receiver_url'],tool.fetch(m['diagnostic_url'])['body'])
+            wrong=LabHTTP(self.cfg,m['run_id'],'control')
+            with self.assertRaises(ValueError):wrong.fetch(wrong.a)
+            self.assertEqual(tool.fetch(m['receiver_url'])['status'],200)
+            m['active_until']=0;write_json(folder/'run.json',m)
+            with self.assertRaises(ValueError):tool.fetch(m['receiver_url'])
+            self.assertEqual([r['kind'] for r in records(folder/'endpoints.jsonl')],['diagnostic_served','receiver_receipt'])
 
     def test_unknown_url_blocked_before_network(self):
         _,m,tool=self.trial()

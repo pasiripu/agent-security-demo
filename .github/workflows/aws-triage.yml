@@ -31,7 +31,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           AWS_REGION: ${{ vars.AWS_REGION }}
-          LAB_BUCKET: ${{ vars.LAB_BUCKET }}
           LAB_INSTANCE_ID: ${{ vars.LAB_INSTANCE_ID }}
           SSM_DOCUMENT: ${{ vars.SSM_DOCUMENT }}
           DIAGNOSTIC_ORIGIN: ${{ vars.DIAGNOSTIC_ORIGIN }}

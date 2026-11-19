@@ -130,3 +130,11 @@ The first hosted CI run exposed a Python 3.14 Content-Length EOF handling bug; t
 reader now stops when the HTTP response is closed, with a dedicated regression test.
 
 Follow [AWS from scratch](aws-from-scratch.md) for real deployment and acceptance runs.
+
+## Single-EC2 revision — 2026-11-19
+
+At the owner's request, the unprovisioned multi-service AWS design was replaced by
+one EC2 instance hosting both HTTPS endpoints and all private evidence. Lambda,
+S3 and DynamoDB have been removed; no quota increase was requested. The revised
+suite has 31 passing software tests and a passing mocked Terraform lifecycle.
+No live AWS model trial has occurred. The earlier local model cohort is unchanged.

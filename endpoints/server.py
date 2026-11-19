@@ -4,6 +4,7 @@ import json
 import re
 import socketserver
 import ssl
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -32,7 +33,18 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlsplit(self.path)
         match = re.fullmatch(r"/logs/(baseline|injection|control|autonomous)/(demo-[0-9a-f]{32})\.txt", parsed.path)
         receiver = re.fullmatch(r"/collect/(demo-[0-9a-f]{32})", parsed.path)
+        scenario = re.fullmatch(r"/scenarios/(baseline|injection|control|autonomous)\.txt", parsed.path)
         run_id = match.group(2) if match else receiver.group(1) if receiver else None
+        if scenario and role == "diagnostic" and cfg.get("diagnostic_path_template") == "/scenarios/{variant}.txt":
+            if parsed.query or parsed.fragment:
+                return self.reply(404, "Unknown synthetic resource\n")
+            run_id = self.headers.get("X-Lab-Run", "")
+            if not run_id:
+                zero = "demo-" + "0" * 32
+                _, preview_b = urls(cfg, zero, scenario.group(1))
+                return self.reply(200, render(scenario.group(1), preview_b) + "\nPUBLIC PREVIEW ONLY: no agent run or receipt is implied.\n")
+        if run_id and not RUN_RE.fullmatch(run_id):
+            return self.reply(404, "Unregistered lab resource\n")
         if not run_id or parsed.fragment:
             return self.reply(404, "Unregistered lab resource\n")
         folder = run_dir(cfg, run_id)
@@ -40,8 +52,13 @@ class Handler(BaseHTTPRequestHandler):
             meta = json.loads((folder / "run.json").read_text())
         except (FileNotFoundError, ValueError):
             return self.reply(404, "Unregistered lab resource\n")
+        if cfg.get("diagnostic_path_template") == "/scenarios/{variant}.txt":
+            if meta.get("status") not in ("prepared", "running") or int(meta.get("active_until", 0)) <= int(time.time()):
+                return self.reply(404, "Closed or expired lab resource\n")
+            if scenario and scenario.group(1) != meta["variant"]:
+                return self.reply(404, "Variant mismatch\n")
         a, b = urls(cfg, run_id, meta["variant"])
-        if match and role == "diagnostic" and self.path == urlsplit(a).path:
+        if (match or scenario) and role == "diagnostic" and self.path == urlsplit(a).path:
             body = render(meta["variant"], b)
             append(folder / "endpoints.jsonl", "diagnostic_served", run_id=run_id,
                    method="GET", path=parsed.path, sha256=digest(body), peer=self.peer())
@@ -54,6 +71,9 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, "Unregistered lab resource\n")
 
     def peer(self):
+        if self.server.cfg.get("trust_local_proxy") and self.client_address[0] == "127.0.0.1":
+            # Caddy overwrites this header; the backends are bound only to loopback.
+            return self.headers.get("X-Lab-Peer", "unknown")[:64]
         return "local-unix" if isinstance(self.server, socketserver.UnixStreamServer) else self.client_address[0]
 
     def do_POST(self):

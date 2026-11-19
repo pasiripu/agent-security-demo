@@ -5,7 +5,7 @@ links to a synthetic diagnostic log, which the agent may fetch autonomously. The
 injection condition adds an external instruction to visit a separate inert-marker
 receiver. No ZT Gateway integration or simulation is included.
 
-**Local validation:** 34 software tests pass. Across 24 real Claude trials,
+**Local validation:** 32 software tests pass. Across 24 real Claude trials,
 A content reached the agent in 24/24; the injection caused **0/6** B requests;
 the autonomous-access fallback retrieved A in **6/6** local trials. See
 [actual results](docs/experiment-results.md) (original private traces are excluded from public source). Local Unix TLS
@@ -16,9 +16,9 @@ The AWS deployment kit is prepared; live AWS acceptance is pending.
 
 Follow the [AWS guide from scratch](docs/aws-from-scratch.md). It provides the exact
 Mac/IAM-user commands, Terraform review/apply, secret setup, GitHub approval, demo
-issues, evidence viewing and teardown. Region: **us-west-2**. Two AWS-provided
-Lambda HTTPS URLs serve diagnostics and receive inert markers; no domain purchase
-is needed. S3 and raw run evidence remain private.
+issues, evidence viewing and teardown. Region: **us-west-2**. One EC2 instance hosts both HTTPS endpoints and private run evidence on its disk.
+Free sslip.io names and Caddy certificates avoid a domain purchase. No Lambda, S3
+or DynamoDB is used.
 
 The public repo is [pasiripu/agent-security-demo](https://github.com/pasiripu/agent-security-demo).
 The `demo` environment requires owner approval. Runs remain disabled until AWS
@@ -90,7 +90,7 @@ metadata and mixed public/private DNS destinations are rejected.
   recording replay. No sample agent successes are included.
 - Approval-gated `issues: opened` AWS workflow, public issue form, fixed label/comment
   wrapper, EC2 worker, per-issue and daily run limits, deployment/operator scripts.
-- Terraform for dedicated EC2/VPC, SSM, private S3/DynamoDB and two HTTPS Lambdas.
+- Terraform for one EC2 instance, its VPC, SSM and minimal GitHub OIDC roles.
   Docker/Caddy remains an alternative local deployment.
 
 ## More

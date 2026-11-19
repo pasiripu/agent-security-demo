@@ -88,16 +88,11 @@ variable "auto_stop_hours" {
     error_message = "Auto-stop must be between 1 and 24 hours."
   }
 }
-variable "lambda_concurrency" {
-  type    = number
-  default = 2
-  validation {
-    condition     = contains([1, 2, 3, 4, 5], var.lambda_concurrency)
-    error_message = "Reserve 1 to 5 concurrent invocations per endpoint."
-  }
-}
-variable "budget_email" {
-  description = "Optional monthly AWS cost alert email; alerts do not stop spending."
+variable "source_commit" {
+  description = "Immutable commit of the public demo source downloaded during bootstrap."
   type        = string
-  default     = ""
+  validation {
+    condition     = can(regex("^[0-9a-f]{40}$", var.source_commit))
+    error_message = "Use a full 40-character published Git commit SHA."
+  }
 }

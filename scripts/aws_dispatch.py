@@ -2,18 +2,10 @@
 import json
 import os
 from pathlib import Path
-import subprocess
-import tempfile
 import time
 from agent.github_issue import github
 from scripts.aws_cli import aws
 from scripts.aws_instance_job import validate_issue
-
-
-def transfer(region,bucket,operation,key,path):
-    cmd=['aws','--region',region,'s3api',operation,'--bucket',bucket,'--key',key]
-    cmd+=['--body',str(path)] if operation=='put-object' else [str(path)]
-    subprocess.run(cmd,check=True,capture_output=True,timeout=45)
 
 
 def main():
@@ -25,27 +17,27 @@ def main():
          'url':issue['html_url'],'workflow_invocation':os.environ['GITHUB_RUN_ID'],
          'source_commit':os.environ['GITHUB_SHA']}
     validate_issue(job,{'github_repository':repo,'diagnostic_origin':os.environ['DIAGNOSTIC_ORIGIN']},number)
-    with tempfile.TemporaryDirectory() as scratch:
-        path=Path(scratch)/'issue.json'; path.write_text(json.dumps(job))
-        transfer(region,os.environ['LAB_BUCKET'],'put-object',f'jobs/{number}.json',path)
-        sent=aws(region,'ssm','send-command',{'DocumentName':os.environ['SSM_DOCUMENT'],
-            'InstanceIds':[os.environ['LAB_INSTANCE_ID']],'Parameters':{'IssueNumber':[str(number)]},
-            'TimeoutSeconds':120,'Comment':'Approved synthetic issue triage'})
-        command=sent['Command']['CommandId']; status='Pending'; misses=0
-        deadline=time.monotonic()+660
-        while time.monotonic()<deadline:
-            time.sleep(5)
-            try:
-                result=aws(region,'ssm','get-command-invocation',{'CommandId':command,'InstanceId':os.environ['LAB_INSTANCE_ID']})
-                status=result['Status']; misses=0
-            except RuntimeError:
-                misses+=1
-                if misses>6: raise RuntimeError('SSM invocation unavailable; verify instance is running and online')
-                continue
-            if status not in ('Pending','InProgress','Delayed','Cancelling'): break
-        if status!='Success': raise RuntimeError('SSM job did not succeed: '+status+'; inspect its invocation in Systems Manager')
-        transfer(region,os.environ['LAB_BUCKET'],'get-object',f'reports/{number}.json',path)
-        report=json.loads(path.read_text())
+    import base64
+    raw=json.dumps(job,ensure_ascii=False).encode()
+    if len(raw)>24000: raise ValueError('Issue envelope exceeds the small demo limit')
+    payload=base64.b64encode(raw).decode()
+    sent=aws(region,'ssm','send-command',{'DocumentName':os.environ['SSM_DOCUMENT'],
+        'InstanceIds':[os.environ['LAB_INSTANCE_ID']],'Parameters':{'IssueB64':[payload]},
+        'TimeoutSeconds':120,'Comment':'Approved synthetic issue triage'})
+    command=sent['Command']['CommandId'];status='Pending';misses=0
+    deadline=time.monotonic()+660
+    while time.monotonic()<deadline:
+        time.sleep(5)
+        try:
+            result=aws(region,'ssm','get-command-invocation',{'CommandId':command,'InstanceId':os.environ['LAB_INSTANCE_ID']})
+            status=result['Status'];misses=0
+        except RuntimeError:
+            misses+=1
+            if misses>6: raise RuntimeError('SSM invocation unavailable; verify the instance is running and online')
+            continue
+        if status not in ('Pending','InProgress','Delayed','Cancelling'):break
+    if status!='Success':raise RuntimeError('SSM job did not succeed: '+status+'; inspect its invocation in Systems Manager')
+    report=json.loads(result['StandardOutputContent'])
     outcome=report['outcome']
     label=report['label']
     if label not in ('build-failure','needs-information'): raise ValueError('Unexpected fixed label')

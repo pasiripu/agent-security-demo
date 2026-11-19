@@ -16,8 +16,6 @@ resource "aws_iam_role" "github" {
 resource "aws_iam_role_policy" "github" {
   role = aws_iam_role.github.id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
-    { Effect = "Allow", Action = ["s3:PutObject"], Resource = "${aws_s3_bucket.lab.arn}/jobs/*" },
-    { Effect = "Allow", Action = ["s3:GetObject"], Resource = "${aws_s3_bucket.lab.arn}/reports/*" },
     { Effect = "Allow", Action = ["ssm:SendCommand"], Resource = [aws_ssm_document.triage.arn, aws_instance.agent.arn] },
     { Effect = "Allow", Action = ["ssm:GetCommandInvocation"], Resource = "*" }
   ] })

@@ -124,7 +124,7 @@ def configure(deployment):
         raise ValueError('Terraform outputs refer to a different repository')
     protect(REPO,repo['owner']['id'])
     variables={'AWS_ROLE_ARN':deployment['aws_role_arn'],'AWS_REGION':deployment['aws_region'],
-        'LAB_BUCKET':deployment['bucket'],'LAB_INSTANCE_ID':deployment['instance_id'],
+        'LAB_INSTANCE_ID':deployment['instance_id'],
         'SSM_DOCUMENT':deployment['ssm_document'],'DIAGNOSTIC_ORIGIN':deployment['diagnostic_origin']}
     existing=gh(f'repos/{REPO}/environments/demo/variables').get('variables',[])
     for name,value in variables.items():

@@ -22,10 +22,8 @@ def main():
     names+=['endpoints/__init__.py','endpoints/diagnostics/content.py','scripts/__init__.py',
             'scripts/aws_cli.py','scripts/aws_instance_job.py']
     archive(build/'runtime.zip',{n:(ROOT/n).read_bytes() for n in names})
-    archive(build/'endpoint.zip',{'handler.py':(ROOT/'infrastructure/aws/lambda/handler.py').read_bytes(),
-        'endpoints/__init__.py':b'', 'endpoints/diagnostics/__init__.py':b'',
-        'endpoints/diagnostics/content.py':(ROOT/'endpoints/diagnostics/content.py').read_bytes()})
-    print('Built runtime.zip and endpoint.zip from explicit source files; no credentials or evidence included.')
+    print('Built local runtime.zip from explicit source files. EC2 bootstrap uses the pinned public Git commit.')
+
 
 
 if __name__=='__main__': main()

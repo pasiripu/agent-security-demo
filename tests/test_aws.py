@@ -1,87 +1,46 @@
-"""Offline contract tests; these do not claim live AWS deployment success."""
-import hashlib
+"""Offline single-EC2 demo contracts; never claim live AWS acceptance from these."""
+import base64
 import http.client
-import importlib.util
 import io
 import json
 from pathlib import Path
 import tempfile
-import time
 import types
 import unittest
-from unittest.mock import patch
-from unittest.mock import MagicMock
-from agent.common import ROOT, urls
+import zipfile
+from unittest.mock import MagicMock,patch
+from agent.common import urls
 from agent.http_tool import LabHTTP
-from endpoints.diagnostics.content import render
-from scripts.aws_instance_job import validate_issue, reserve
+from scripts.aws_instance_job import validate_issue,reserve,decode_job
 from scripts.github_setup import public_files
 
-spec=importlib.util.spec_from_file_location('lambda_handler',ROOT/'infrastructure/aws/lambda/handler.py')
-handler=importlib.util.module_from_spec(spec); spec.loader.exec_module(handler)
 RUN='demo-'+'a'*32
-A='https://example-a.lambda-url.us-west-2.on.aws'
-B='https://example-b.lambda-url.us-west-2.on.aws'
-
-
-class Table:
-    def __init__(self,meta): self.meta=meta; self.events=[]
-    def get_item(self,**kw):
-        return {'Item':self.meta} if kw['Key']['run_id']==RUN and self.meta else {}
-    def put_item(self,**kw): self.events.append(kw['Item'])
+A='https://diagnostics.8-8-8-8.sslip.io'
+B='https://receiver.8-8-8-8.sslip.io'
 
 
 class AWSContracts(unittest.TestCase):
-    def setUp(self):
-        self.body=render('injection',B+'/collect/'+RUN+'?marker='+RUN)
-        self.table=Table({'variant':'injection','log_key':'logs/'+RUN+'.txt',
-                          'sha256':hashlib.sha256(self.body.encode()).hexdigest(),
-                          'expires_at':int(time.time())+86400,'active_until':int(time.time())+600})
-        self.s3=types.SimpleNamespace(get_object=lambda **kw:{'Body':io.BytesIO(self.body.encode())})
-        self.context=types.SimpleNamespace(aws_request_id='aws-request-123')
-
-    def call(self,path='/scenarios/injection.txt',query='',headers=None,role='diagnostic',method='GET'):
-        return handler.handle({'rawPath':path,'rawQueryString':query,'headers':headers or {},
-            'requestContext':{'http':{'method':method,'sourceIp':'203.0.113.42'}}},
-            self.context,self.table,'synthetic-bucket',self.s3,role,B)
-
-    def test_public_preview_creates_no_receipt(self):
-        result=self.call(); self.assertEqual(result['statusCode'],200)
-        self.assertIn('PUBLIC PREVIEW',result['body']); self.assertEqual(self.table.events,[])
-
-    def test_registered_delivery_hash_and_receipt(self):
-        result=self.call(headers={'X-Lab-Run':RUN})
-        self.assertEqual(result['body'],self.body)
-        self.assertEqual(self.table.events[0]['sha256'],hashlib.sha256(self.body.encode()).hexdigest())
-        self.assertEqual(self.table.events[0]['kind'],'diagnostic_served')
-        self.assertEqual(self.table.events[0]['aws_request_id'],'aws-request-123')
-
-    def test_only_exact_registered_marker_is_recorded(self):
-        path='/collect/'+RUN
-        self.assertEqual(self.call(path,'marker='+RUN,role='receiver')['statusCode'],200)
-        self.assertEqual(self.table.events[0]['kind'],'receiver_receipt')
-        self.assertEqual(self.call(path,'marker='+RUN+'&extra=1',role='receiver')['statusCode'],404)
-        self.assertEqual(len(self.table.events),1)
-
-    def test_unregistered_expired_and_closed_runs_rejected(self):
-        for field in ('expires_at','active_until'):
-            with self.subTest(field=field):
-                self.table.meta[field]=0
-                self.assertEqual(self.call(headers={'x-lab-run':RUN})['statusCode'],404)
-                self.table.meta[field]=int(time.time())+600
-        self.assertEqual(self.call(headers={'x-lab-run':'demo-'+'b'*32})['statusCode'],404)
-        self.assertEqual(self.table.events,[])
-
-    def test_content_corruption_is_not_delivery(self):
-        self.table.meta['sha256']='0'*64
-        self.assertEqual(self.call(headers={'x-lab-run':RUN})['statusCode'],502)
-        self.assertEqual(self.table.events,[])
-
-    def test_exact_paths_methods_queries(self):
-        for path,query,method in [('/scenarios/injection.txt/','','GET'),('/scenarios/injection.txt','x=1','GET'),
-                                  ('/scenarios/injection.txt','','POST'),('/scenarios/other.txt','','GET')]:
-            self.assertNotEqual(self.call(path,query,method=method)['statusCode'],200)
-        self.assertEqual(self.table.events,[])
+    def test_private_export_requires_scan_and_preserves_original_bytes(self):
+        from dashboard.server import Handler
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)/'runs'/RUN;folder.mkdir(parents=True)
+            meta={'run_id':RUN};(folder/'run.json').write_text(json.dumps(meta))
+            original=b'{"event":"authentic fixture"}\n'
+            (folder/'trace.jsonl').write_bytes(original)
+            (folder/'unlisted.txt').write_text('not exported')
+            (folder/'stderr.txt').symlink_to(folder/'unlisted.txt')
+            request=Handler.__new__(Handler)
+            request.headers={'Host':'127.0.0.1:8765'}
+            request.path='/api/export/'+RUN
+            request.server=types.SimpleNamespace(cfg={'data_dir':tmp})
+            request.reply=MagicMock()
+            request.do_GET();self.assertEqual(request.reply.call_args.args[0],403)
+            meta['secret_scan_passed']=True;(folder/'run.json').write_text(json.dumps(meta))
+            request.do_GET();status,data,mime=request.reply.call_args.args
+            self.assertEqual((status,mime),(200,'application/zip'))
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                self.assertEqual(set(archive.namelist()),{'run.json','trace.jsonl'})
+                self.assertEqual(archive.read('trace.jsonl'),original)
 
     def test_issue_validation_preserves_untrusted_text_as_data(self):
         cfg={'github_repository':'pasiripu/agent-security-demo','diagnostic_origin':A}
@@ -139,6 +98,13 @@ class AWSContracts(unittest.TestCase):
                 self.assertEqual(tool.fetch(tool.b)['body'],'log')
                 b_headers=connection.return_value.request.call_args.kwargs['headers']
                 self.assertNotIn('X-Lab-Run',b_headers)
+
+    def test_ssm_payload_is_bounded_json_data(self):
+        job={'number':42,'title':'$(never execute)'}
+        payload=base64.b64encode(json.dumps(job).encode()).decode()
+        self.assertEqual(decode_job(payload),(job,42))
+        for bad in ("'; touch /tmp/never",'A'*32001,base64.b64encode(b'{"number":true}').decode()):
+            with self.assertRaises((ValueError,UnicodeError)):decode_job(bad)
 
 
 if __name__=='__main__': unittest.main()

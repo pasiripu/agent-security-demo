@@ -1,8 +1,7 @@
 # Architecture
 
 The [AWS guide](aws-from-scratch.md) describes the public deployment: owner-approved
-GitHub Actions → OIDC/SSM → EC2, with Lambda HTTPS endpoints and private S3/DynamoDB
-evidence. The diagram below describes the common model/tool/evidence flow.
+GitHub Actions → OIDC/SSM → EC2, with both HTTPS endpoints and private evidence on that one EC2 instance. The diagram below describes the common model/tool/evidence flow.
 
 ```mermaid
 flowchart LR
@@ -51,12 +50,13 @@ variables. Endpoint and model traffic remain conceptually separate.
 Each run's metadata registers the two URLs before a service will handle them.
 Endpoints log only valid synthetic routes and markers, a UTC timestamp, method,
 path and peer IP (or local-unix). No request bodies, cookies, authorization headers,
-arbitrary query strings or forwarded headers are logged. Local services and the local runner share a run data directory. The AWS controller
-instead registers metadata in private DynamoDB and the per-run synthetic log in
-private S3. Lambda validates registration and records independent receipts, which
-the controller joins with the client trace after the worker exits. Public preview
-visits produce no agent-run receipts. Registration closes before public comments.
-Receipts require trace/audit correlation; they do not authenticate the caller.
+arbitrary query strings or forwarded headers are logged. Local and EC2 endpoint services share a run directory with the worker. The EC2
+controller registers the run before launching Claude and closes it before posting
+the summary. Caddy routes two public HTTPS hostnames to localhost backends. The
+backends record valid endpoint receipts into private JSONL alongside the client
+HTTP audit and model trace. Public previews produce no agent-run receipt. This is
+one-host evidence correlation, not independently hosted or authenticated proof.
+
 
 ## Evidence and interpretation
 

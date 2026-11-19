@@ -25,9 +25,20 @@ resource "aws_route_table_association" "lab" {
 }
 resource "aws_security_group" "agent" {
   name_prefix = "${local.name}-"
-  description = "No inbound access; HTTPS package/model/lab calls, HTTP package mirrors"
-  ingress     = []
-  vpc_id      = aws_vpc.lab.id
+  description = "Public demo HTTP/HTTPS only; administration via SSM"
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  vpc_id = aws_vpc.lab.id
   egress {
     from_port   = 443
     to_port     = 443
@@ -64,9 +75,6 @@ resource "aws_iam_role_policy" "ssm" {
 resource "aws_iam_role_policy" "instance" {
   role = aws_iam_role.instance.id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
-    { Effect = "Allow", Action = ["s3:GetObject"], Resource = ["${aws_s3_bucket.lab.arn}/release/*", "${aws_s3_bucket.lab.arn}/jobs/*"] },
-    { Effect = "Allow", Action = ["s3:PutObject"], Resource = ["${aws_s3_bucket.lab.arn}/logs/*", "${aws_s3_bucket.lab.arn}/reports/*", "${aws_s3_bucket.lab.arn}/evidence/*"] },
-    { Effect = "Allow", Action = ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:Query"], Resource = aws_dynamodb_table.runs.arn },
     { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = "${local.arn}:ssm:${var.aws_region}:${var.aws_account_id}:parameter${var.api_key_parameter}" }
   ] })
 }
@@ -80,6 +88,9 @@ resource "aws_instance" "agent" {
   associate_public_ip_address          = true
   instance_initiated_shutdown_behavior = "stop"
   user_data_replace_on_change          = true
+  credit_specification {
+    cpu_credits = "standard"
+  }
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
@@ -94,8 +105,8 @@ resource "aws_instance" "agent" {
     delete_on_termination = true
   }
   user_data = templatefile("${path.module}/user-data.sh.tftpl", {
-    region     = var.aws_region, bucket = aws_s3_bucket.lab.id, release_sha = aws_s3_object.runtime.source_hash,
-    config_b64 = base64encode(jsonencode(local.agent_config)), auto_stop_hours = var.auto_stop_hours
+    region     = var.aws_region, source_repository = var.github_repository, source_commit = var.source_commit,
+    config_b64 = base64encode(jsonencode(local.agent_config)), auto_stop_hours = var.auto_stop_hours, retention_days = var.retention_days
   })
   tags       = { Name = local.name }
   depends_on = [aws_iam_role_policy.instance, aws_iam_role_policy.ssm, aws_route_table_association.lab]
@@ -104,10 +115,10 @@ resource "aws_ssm_document" "triage" {
   name          = "${local.name}-triage"
   document_type = "Command"
   content = jsonencode({
-    schemaVersion = "2.2", description = "Only a numeric issue ID; runs installed trusted controller",
-    parameters    = { IssueNumber = { type = "String", allowedPattern = "^[1-9][0-9]{0,9}$", description = "Approved GitHub issue number" } },
+    schemaVersion = "2.2", description = "Only base64 JSON data; runs installed trusted demo controller",
+    parameters    = { IssueB64 = { type = "String", allowedPattern = "^[A-Za-z0-9+/]+={0,2}$", description = "Approved public issue JSON encoded as base64 data" } },
     mainSteps = [{ action = "aws:runShellScript", name = "Triage", inputs = {
-      timeoutSeconds = "600", runCommand = ["/usr/local/bin/agent-lab-issue {{IssueNumber}}"]
+      timeoutSeconds = "600", runCommand = ["/usr/local/bin/agent-lab-issue '{{IssueB64}}'"]
     } }]
   })
 }

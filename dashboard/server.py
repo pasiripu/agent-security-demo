@@ -1,6 +1,8 @@
 """Read-only localhost dashboard, with explicit live-observation and replay modes."""
 import argparse
 import json
+import io
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -24,6 +26,18 @@ class Handler(BaseHTTPRequestHandler):
                 meta = json.loads(p.read_text())
                 rows.append({"meta": meta, "outcome": analyze(p.parent, meta)})
             return self.reply(200, json.dumps(rows).encode(), "application/json")
+        if path.startswith("/api/export/") and RUN_RE.fullmatch(path.rsplit("/", 1)[1]):
+            from scripts.aws_instance_job import EVIDENCE
+            folder=run_dir(cfg,path.rsplit("/",1)[1])
+            try: meta=json.loads((folder/'run.json').read_text())
+            except (FileNotFoundError,ValueError):return self.reply(404,b'Unknown run','text/plain')
+            if not meta.get('secret_scan_passed'):return self.reply(403,b'Run has not passed the controller secret scan','text/plain')
+            files=[folder/n for n in EVIDENCE if (folder/n).is_file() and not (folder/n).is_symlink()]
+            if sum(p.stat().st_size for p in files)>20*1024*1024:return self.reply(413,b'Archive exceeds demo size limit','text/plain')
+            data=io.BytesIO()
+            with zipfile.ZipFile(data,'w',zipfile.ZIP_DEFLATED) as archive:
+                for file in files:archive.write(file,file.name)
+            return self.reply(200,data.getvalue(),'application/zip')
         if path.startswith("/api/run/") and RUN_RE.fullmatch(path.rsplit("/", 1)[1]):
             folder = run_dir(cfg, path.rsplit("/", 1)[1])
             if not (folder / "run.json").exists():
