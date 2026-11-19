@@ -1,12 +1,12 @@
 # Infrastructure
 
 For the public GitHub/AWS demo, use [the step-by-step AWS guide](../docs/aws-from-scratch.md) and the Terraform in `aws/`.
-The prepared kit uses us-west-2, one EC2 instance with public HTTP/HTTPS, local private logs, SSM, GitHub OIDC and owner approval. No Lambda, S3 or DynamoDB is deployed. Live AWS validation is pending.
+The prepared kit uses us-west-2, one EC2 instance with public HTTP/HTTPS, local private logs, SSM, GitHub OIDC and owner approval. No Lambda, S3 or DynamoDB is deployed. EC2 startup and public HTTPS previews are verified; model-run acceptance is pending.
 
 The Docker/Caddy files in this directory remain an alternative for a private controlled lab with your own domains; they are not required by the AWS guide.
 
 
-The following Docker route is an optional alternative. AWS provisioning has not been executed.
+The following Docker route is an optional alternative. The AWS demo has been provisioned.
 Docker Compose is an optional co-located public HTTPS deployment; it has not been
 validated against a running Docker daemon in this workspace.
 

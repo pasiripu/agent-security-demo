@@ -20,6 +20,22 @@ B='https://receiver.8-8-8-8.sslip.io'
 
 
 class AWSContracts(unittest.TestCase):
+    def test_aws_cli_private_input_removed_on_success_and_failure(self):
+        from scripts.aws_cli import aws
+        import os,subprocess
+        paths=[]
+        def inspect(command,**kwargs):
+            self.assertNotIn('synthetic-key',str(command))
+            file=Path(command[-1][7:]);paths.append(file)
+            self.assertEqual(file.stat().st_mode & 0o777,0o600)
+            self.assertEqual(json.loads(file.read_text()),{'Value':'synthetic-key'})
+            if len(paths)==2:raise subprocess.TimeoutExpired(command,1)
+            return types.SimpleNamespace(returncode=0,stdout='{}')
+        with patch('scripts.aws_cli.subprocess.run',side_effect=inspect):
+            self.assertEqual(aws('us-west-2','ssm','put-parameter',{'Value':'synthetic-key'}),{})
+            with self.assertRaises(subprocess.TimeoutExpired):aws('us-west-2','ssm','put-parameter',{'Value':'synthetic-key'})
+        self.assertTrue(all(not p.exists() for p in paths))
+
     def test_private_export_requires_scan_and_preserves_original_bytes(self):
         from dashboard.server import Handler
         with tempfile.TemporaryDirectory() as tmp:

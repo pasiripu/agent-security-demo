@@ -135,7 +135,8 @@ python3 -m scripts.aws_admin status
 ```
 
 To reuse the existing private local prototype key, use `aws_admin key --use-local-key`
-instead. The key is sent via stdin to SSM SecureString; it is never placed in
+instead. The helper sends the key using an owner-only temporary JSON input file,
+removed when the CLI call finishes or raises an error. The key is never placed in
 Terraform state, command arguments or bootstrap logs.
 
 Allow startup to finish. In the AWS console use **EC2 → agent-security-demo →

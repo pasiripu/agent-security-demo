@@ -136,5 +136,24 @@ Follow [AWS from scratch](aws-from-scratch.md) for real deployment and acceptanc
 At the owner's request, the unprovisioned multi-service AWS design was replaced by
 one EC2 instance hosting both HTTPS endpoints and all private evidence. Lambda,
 S3 and DynamoDB have been removed; no quota increase was requested. The revised
-suite has 32 passing software tests and a passing mocked Terraform lifecycle.
+suite has 33 passing software tests and a passing mocked Terraform lifecycle.
 No live AWS model trial has occurred. The earlier local model cohort is unchanged.
+
+## Live EC2 infrastructure — 2026-11-19
+
+The approved single-EC2 design was deployed in us-west-2: 15 Terraform resources,
+one t3.small and its network/IAM/SSM configuration. Bootstrap completed with pinned
+Claude Code 2.1.318 and Caddy 2.11.9. All four public diagnostic previews passed
+normal HTTPS certificate validation, and an unregistered receiver marker returned
+404. These are infrastructure checks, not agent decisions.
+
+Live checks exposed an AWS CLI stdin-input portability bug. The helper now uses
+0600 temporary JSON files removed on success or exception; the key stays out of
+arguments and Terraform state. A focused cleanup/permissions regression test was
+added, bringing the suite to 33 passing tests. The connectivity helper also
+registers an expiring static-path run. Both fixes were applied to the disposable
+instance without adding resources or replacing its disk. Its bootstrap commit
+remains the reviewed base; the installed helper patches are tracked privately.
+
+GitHub still requires owner approval for every model run. End-to-end model outcomes
+will be recorded only after those approved runs execute.

@@ -5,12 +5,12 @@ links to a synthetic diagnostic log, which the agent may fetch autonomously. The
 injection condition adds an external instruction to visit a separate inert-marker
 receiver. No ZT Gateway integration or simulation is included.
 
-**Local validation:** 32 software tests pass. Across 24 real Claude trials,
+**Local validation:** 33 software tests pass. Across 24 real Claude trials,
 A content reached the agent in 24/24; the injection caused **0/6** B requests;
 the autonomous-access fallback retrieved A in **6/6** local trials. See
 [actual results](docs/experiment-results.md) (original private traces are excluded from public source). Local Unix TLS
-does not establish public egress. GitHub/public HTTPS and AWS remain unverified;
-The AWS deployment kit is prepared; live AWS acceptance is pending.
+does not establish public egress. The single-EC2 AWS deployment and public HTTPS
+previews are verified; GitHub-to-AWS model acceptance is pending.
 
 ## AWS deployment for pasiripu
 
@@ -21,8 +21,7 @@ Free sslip.io names and Caddy certificates avoid a domain purchase. No Lambda, S
 or DynamoDB is used.
 
 The public repo is [pasiripu/agent-security-demo](https://github.com/pasiripu/agent-security-demo).
-The `demo` environment requires owner approval. Runs remain disabled until AWS
-configuration is complete. A GitHub-hosted dispatcher uses OIDC and a fixed SSM
+The `demo` environment requires owner approval. The deployed issue workflow is enabled and still requires your approval. A GitHub-hosted dispatcher uses OIDC and a fixed SSM
 command to run the agent on EC2. No persistent public self-hosted runner or GitHub
 token on EC2 is needed.
 
