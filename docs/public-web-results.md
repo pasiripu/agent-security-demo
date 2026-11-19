@@ -42,3 +42,7 @@ The receiver and trace store share one EC2 host. Absence is bounded to the tools
 A separate deterministic connectivity test verified both receiver routes, synthetic reads and external HTTPS delivery without a model. It is marked `connectivity-test`, excluded from agent-trial statistics and never used to claim autonomous or injection behavior.
 
 43 software tests passed locally and in [hosted CI](https://github.com/pasiripu/agent-security-demo/actions/runs/44513345208). Original private run files were exported with their bytes preserved and transfer hashes verified; the API-key scan passed. Raw private evidence is not published in the public repository.
+
+## Paused after verification
+
+At the owner's request, the EC2 instance was confirmed **stopped** after this trial and `LAB_ENABLED=false`. Disk, key parameter and private evidence are retained. Public EC2 URLs from this session are offline and will change after restart. Resume with the operator guide and regenerate/re-publish the diagnostic links and external attack page's receiver address before enabling new issues. Required owner approval remains configured.

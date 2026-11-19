@@ -30,8 +30,9 @@ Free sslip.io names and Caddy certificates avoid a domain purchase. No Lambda, S
 or DynamoDB is used.
 
 The public repo is [pasiripu/agent-security-demo](https://github.com/pasiripu/agent-security-demo).
-The `demo` environment requires owner approval. EC2 auto-stops after six hours;
-check its status and refresh URLs after each stop/start. A GitHub-hosted dispatcher uses OIDC and a fixed SSM
+The `demo` environment requires owner approval. **EC2 is stopped and issue runs
+are disabled at the owner's request after the completed trial.** Resume using the
+guide and refresh URLs after stop/start; the six-hour auto-stop remains configured. A GitHub-hosted dispatcher uses OIDC and a fixed SSM
 command to run the agent on EC2. No persistent public self-hosted runner or GitHub
 token on EC2 is needed.
 
