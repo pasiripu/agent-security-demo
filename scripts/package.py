@@ -7,7 +7,7 @@ from agent.common import ROOT
 
 def main():
     destination=ROOT.parent/'agent-security-demo.zip'
-    roots={'.github','agent','endpoints','experiments','tests','dashboard','infrastructure','scripts','docs'}
+    roots={'.github','agent','endpoints','experiments','tests','dashboard','infrastructure','scripts','docs','demo-data'}
     root_files={'README.md','.gitignore','config.example.json'}
     files=[]
     for path in ROOT.rglob('*'):

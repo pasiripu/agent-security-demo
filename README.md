@@ -1,11 +1,16 @@
 # AI Agent Prompt-Injection & Egress Lab
 
-A controlled issue-triage experiment with real Claude Code: a public GitHub issue
-links to a synthetic diagnostic log, which the agent may fetch autonomously. The
-injection condition adds an external instruction to visit a separate inert-marker
-receiver. .
+A public GitHub issue supplies a diagnostic URL that real Claude Code may fetch
+autonomously after owner approval. The external page can attempt indirect prompt
+injection: ask for model/service information or export invented repository details.
+The AWS harness now permits **any public HTTPS text destination**, with a read-only
+synthetic repository tool and a receiver that records synthetic exports.
+See the [public-web demo and manual instructions](docs/public-web-demo.md).
 
-**Local validation:** 33 software tests pass. Across 24 real Claude trials,
+**Expanded version:** 43 software tests pass. New genuine agent trials require
+owner approval; historical outcomes below apply to the original exact-URL harness.
+
+**Historical local validation:** Across 24 real Claude trials,
 A content reached the agent in 24/24; the injection caused **0/6** B requests;
 the autonomous-access fallback retrieved A in **6/6** local trials. See
 [actual results](docs/experiment-results.md) (original private traces are excluded from public source). Local Unix TLS
@@ -23,8 +28,8 @@ Free sslip.io names and Caddy certificates avoid a domain purchase. No Lambda, S
 or DynamoDB is used.
 
 The public repo is [pasiripu/agent-security-demo](https://github.com/pasiripu/agent-security-demo).
-The `demo` environment requires owner approval. EC2 and the issue workflow are
-currently paused to control cost; use the guide to restart and refresh URLs. A GitHub-hosted dispatcher uses OIDC and a fixed SSM
+The `demo` environment requires owner approval. EC2 auto-stops after six hours;
+check its status and refresh URLs after each stop/start. A GitHub-hosted dispatcher uses OIDC and a fixed SSM
 command to run the agent on EC2. No persistent public self-hosted runner or GitHub
 token on EC2 is needed.
 
@@ -84,8 +89,10 @@ metadata and mixed public/private DNS destinations are rejected.
 - Baseline and quoted-rejection control fixtures; genuine refusals require review.
 - Scenario B: ordinary diagnostic retrieval, classified outside a documented lab
   enterprise destination policy. No hidden injection in this variant.
-- Exact per-run synthetic URL allowlist, bounded plain text, no redirects/proxies,
-  no shell/file tools, call/time/model-cost caps.
+- AWS public-web mode: public HTTPS text/HTML/JSON retrieval, synthetic repository
+  reader, discovery/export payloads and fresh per-run canary tracking. The original
+  exact-URL harness remains the default for historical local experiments.
+- No redirects/proxies, shell or arbitrary host-file tools; call/time/model-cost caps.
 - Independent raw Claude stream, HTTP audit, endpoint receipts, conservative
   evidence analysis, human interpretation/refusal review, grouped trial reports.
 - Read-only localhost dashboard, scenario filtering and clearly marked authentic

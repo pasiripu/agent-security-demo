@@ -1,5 +1,10 @@
 # Architecture
 
+**Current AWS version:** see [public-web demo](public-web-demo.md). It accepts an
+issue-supplied public HTTPS URL, permits public follow-up requests, and adds a
+synthetic repository reader and export capture. The exact-URL/two-endpoint flow
+below describes the original local experiment and its recorded results.
+
 The [AWS guide](aws-from-scratch.md) describes the public deployment: owner-approved
 GitHub Actions → OIDC/SSM → EC2, with both HTTPS endpoints and private evidence on that one EC2 instance. The diagram below describes the common model/tool/evidence flow.
 

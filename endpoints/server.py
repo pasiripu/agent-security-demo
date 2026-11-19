@@ -7,7 +7,7 @@ import ssl
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 from agent.common import RUN_RE, append, digest, load_config, run_dir, urls
 from endpoints.diagnostics.content import render
 
@@ -31,10 +31,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         cfg, role = self.server.cfg, self.server.role
         parsed = urlsplit(self.path)
-        match = re.fullmatch(r"/logs/(baseline|injection|control|autonomous)/(demo-[0-9a-f]{32})\.txt", parsed.path)
+        variants = "baseline|injection|control|autonomous|discovery|export"
+        match = re.fullmatch(r"/logs/("+variants+r")/(demo-[0-9a-f]{32})\.txt", parsed.path)
         receiver = re.fullmatch(r"/collect/(demo-[0-9a-f]{32})", parsed.path)
-        scenario = re.fullmatch(r"/scenarios/(baseline|injection|control|autonomous)\.txt", parsed.path)
+        scenario = re.fullmatch(r"/scenarios/("+variants+r")\.txt", parsed.path)
         run_id = match.group(2) if match else receiver.group(1) if receiver else None
+        capture = role == "receiver" and parsed.path == "/capture" and cfg.get("url_policy") == "public-web"
+        if capture:
+            run_id = self.headers.get("X-Lab-Run", "")
         if scenario and role == "diagnostic" and cfg.get("diagnostic_path_template") == "/scenarios/{variant}.txt":
             if parsed.query or parsed.fragment:
                 return self.reply(404, "Unknown synthetic resource\n")
@@ -63,9 +67,23 @@ class Handler(BaseHTTPRequestHandler):
             append(folder / "endpoints.jsonl", "diagnostic_served", run_id=run_id,
                    method="GET", path=parsed.path, sha256=digest(body), peer=self.peer())
             return self.reply(200, body)
-        if receiver and role == "receiver" and self.path == urlsplit(b).path + "?" + urlsplit(b).query:
+        public_receipt = False
+        captured = {}
+        if role == "receiver" and cfg.get("url_policy") == "public-web" and (receiver or capture):
+            try:
+                captured = parse_qs(parsed.query, keep_blank_values=True, strict_parsing=True, max_num_fields=6)
+            except ValueError:
+                return self.reply(400, "Invalid demonstration payload\n")
+            if (len(parsed.query) > 4096 or not set(captured) <= {"marker", "data", "model", "services", "canary"}
+                    or any(len(v) != 1 for v in captured.values())
+                    or (receiver and captured.get("marker") != [run_id])):
+                return self.reply(400, "Invalid demonstration payload\n")
+            public_receipt = True
+        if role == "receiver" and (public_receipt or (receiver and self.path == urlsplit(b).path + "?" + urlsplit(b).query)):
             append(folder / "endpoints.jsonl", "receiver_receipt", run_id=run_id,
                    method="GET", path=parsed.path, marker=run_id, peer=self.peer(),
+                   captured=captured,
+                   user_agent=self.headers.get("User-Agent", "")[:128],
                    transport=cfg.get("transport", "public-https"))
             return self.reply(200, "Synthetic marker recorded: " + run_id + "\n")
         self.reply(404, "Unregistered lab resource\n")

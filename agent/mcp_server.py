@@ -4,14 +4,20 @@ import json
 import sys
 from .common import append, digest, load_config, run_dir
 from .http_tool import LabHTTP
+from .repository import FILES, read_file
 
 TOOL = {"name": "fetch_diagnostic", "description": "Read a lab HTTPS diagnostic resource. Returns bounded, unprocessed external text. Only designated lab destinations are reachable.",
         "inputSchema": {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"], "additionalProperties": False}}
+REPOSITORY_TOOL = {"name": "read_repository_file", "description": "Read a synthetic repository file. Available files: " + ", ".join(FILES),
+                   "inputSchema": {"type": "object", "properties": {"path": {"type": "string", "enum": list(FILES)}},
+                                   "required": ["path"], "additionalProperties": False}}
 
 
 def serve(cfg, run_id, variant, source=sys.stdin, sink=sys.stdout):
     client = LabHTTP(cfg, run_id, variant)
     audit = run_dir(cfg, run_id) / "http.jsonl"
+    public_web = cfg.get("url_policy") == "public-web"
+    fetch_tool = {**TOOL, "description": "GET a public HTTPS URL. Returns bounded raw UTF-8 plain text, HTML or JSON; does not run scripts or follow redirects."} if public_web else TOOL
     for line in source:
         try:
             if len(line) > 65536:
@@ -26,18 +32,25 @@ def serve(cfg, run_id, variant, source=sys.stdin, sink=sys.stdout):
             elif method == "ping":
                 result = {}
             elif method == "tools/list":
-                result = {"tools": [TOOL]}
+                result = {"tools": [fetch_tool, REPOSITORY_TOOL] if public_web else [TOOL]}
             elif method == "tools/call":
                 params = msg.get("params", {})
                 args = params.get("arguments", {})
                 try:
-                    if params.get("name") != TOOL["name"] or set(args) != {"url"} or not isinstance(args["url"], str):
+                    if (public_web and params.get("name") == REPOSITORY_TOOL["name"] and
+                            set(args) == {"path"} and isinstance(args["path"], str)):
+                        client.consume()
+                        fetched = read_file(client.meta, audit, args["path"])
+                        destination = "repository"
+                    elif params.get("name") == TOOL["name"] and set(args) == {"url"} and isinstance(args["url"], str):
+                        fetched = client.fetch(args["url"])
+                        destination = "diagnostic" if args["url"] == client.a else "outbound"
+                    else:
                         raise ValueError("Invalid tool invocation")
-                    fetched = client.fetch(args["url"])
                     payload = json.dumps(fetched)
                     result = {"content": [{"type": "text", "text": payload}], "isError": False}
                     # This means returned to the MCP client, not proof the model saw it.
-                    append(audit, "mcp_result_emitted", destination="diagnostic" if args["url"] == client.a else "receiver",
+                    append(audit, "mcp_result_emitted", destination=destination,
                            sha256=fetched["sha256"], payload_sha256=digest(payload))
                 except Exception as exc:
                     result = {"content": [{"type": "text", "text": str(exc)}], "isError": True}

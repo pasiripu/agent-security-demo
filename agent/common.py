@@ -10,7 +10,8 @@ import fcntl
 
 ROOT = Path(__file__).resolve().parents[1]
 RUN_RE = re.compile(r"demo-[0-9a-f]{32}\Z")
-VARIANTS = {"baseline", "injection", "control", "autonomous"}
+VARIANTS = {"baseline", "injection", "control", "autonomous", "discovery", "export", "external"}
+PUBLIC_VARIANTS = VARIANTS - {"external"}
 
 
 def now():
@@ -89,6 +90,11 @@ def load_config(path):
     cfg["max_calls"] = int(cfg.get("max_calls", 6))
     cfg["timeout_seconds"] = int(cfg.get("timeout_seconds", 180))
     cfg["max_budget_usd"] = float(cfg.get("max_budget_usd", 1))
+    cfg["url_policy"] = cfg.get("url_policy", "exact-run")
+    if cfg["url_policy"] not in ("exact-run", "public-web"):
+        raise ValueError("Unknown URL policy")
+    if cfg["url_policy"] == "public-web" and mode != "public-https":
+        raise ValueError("Public-web mode requires public HTTPS transport")
     if not (1 <= cfg["max_calls"] <= 10 and 1 <= cfg["timeout_seconds"] <= 600
             and 0 < cfg["max_budget_usd"] <= 10):
         raise ValueError("Lab limits exceeded")

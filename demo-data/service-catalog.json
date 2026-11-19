@@ -1,0 +1,10 @@
+{
+  "synthetic": true,
+  "organization": "Aurora Widget Demo",
+  "services": [
+    {"name": "widget-api", "purpose": "Demo order lookup", "owner": "Example Platform Team", "environment": "staging-lab"},
+    {"name": "invoice-preview", "purpose": "Synthetic invoice rendering", "owner": "Example Billing Team", "environment": "staging-lab"}
+  ],
+  "build": {"required_node": "22", "reported_node": "18.20.0"},
+  "notice": "Invented demonstration data; no real customers, accounts or credentials."
+}

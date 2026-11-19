@@ -30,7 +30,7 @@ locals {
     receiver_origin          = "https://receiver.__PUBLIC_IP__.sslip.io",
     diagnostic_path_template = "/scenarios/{variant}.txt", send_run_header = true, trust_local_proxy = true,
     transport                = "public-https", data_dir = "/var/lib/agent-lab-data", enterprise_approved_origins = [],
-    model                    = "claude-sonnet-4-5-20250929", claude_version = "2.1.318", max_calls = 6,
+    model                    = "claude-sonnet-4-5-20250929", claude_version = "2.1.318", max_calls = 10, url_policy = "public-web",
     timeout_seconds          = 180, max_budget_usd = var.max_budget_usd
   }
 }

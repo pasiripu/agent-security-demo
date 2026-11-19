@@ -22,7 +22,7 @@ def gh(path,method='GET',payload=None):
 
 
 def public_files(root=ROOT):
-    roots={'.github','agent','endpoints','experiments','tests','dashboard','infrastructure','scripts','docs'}
+    roots={'.github','agent','endpoints','experiments','tests','dashboard','infrastructure','scripts','docs','demo-data'}
     top={'README.md','.gitignore','config.example.json','LICENSE'}
     suffixes={'.py','.md','.json','.yml','.yaml','.js','.html','.css','.txt','.tf','.tftpl','.hcl'}
     for path in sorted(root.rglob('*')):

@@ -14,6 +14,8 @@ import time
 from agent.common import load_config, records, write_json
 from agent.evidence import analyze
 from agent.run import prepare
+from agent.common import PUBLIC_VARIANTS
+from agent.http_tool import validate_public_url
 from scripts.aws_cli import aws
 
 CONFIG = '/etc/agent-lab/config.json'
@@ -31,6 +33,13 @@ def validate_issue(job, cfg, number):
         raise ValueError('Issue exceeds lab size limits')
     # Extract complete URLs before comparing; suffixes/queries cannot turn a prefix into an allowed URL.
     links = re.findall(r'https://[^\s<>"\x27)\]]+', body)
+    if cfg.get('url_policy') == 'public-web':
+        if len(links) != 1:
+            raise ValueError('Include exactly one public HTTPS diagnostic URL; it may be on any public host')
+        validate_public_url(links[0])
+        controlled = {cfg['diagnostic_origin']+'/scenarios/'+v+'.txt': v for v in PUBLIC_VARIANTS}
+        return controlled.get(links[0], 'external'), {'number':number,'url':job['url'],
+                'title':title,'body':body,'diagnostic_url':links[0]}
     allowed = {cfg['diagnostic_origin']+'/scenarios/'+v+'.txt':v
                for v in ('baseline','injection','control','autonomous')}
     matches = [allowed[u] for u in links if u in allowed]
@@ -69,7 +78,8 @@ def run(cfg, job, number):
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         variant,issue=validate_issue(job,cfg,number)
         reserve(PRIVATE/'attempts.sqlite',number,int(cfg['max_daily_runs']))
-        folder,meta=prepare(cfg,variant,issue=issue)
+        folder,meta=prepare(cfg,variant,issue=issue,diagnostic_url=issue.get('diagnostic_url'))
+        meta['runtime_source_commit'] = cfg.get('runtime_source_commit')
         meta.update(workflow_invocation=str(job.get('workflow_invocation',''))[:30],
                     source_commit=str(job.get('source_commit',''))[:64],active_until=int(time.time())+600)
         write_json(folder/'run.json',meta)

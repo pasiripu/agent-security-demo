@@ -1,20 +1,16 @@
-name: Synthetic build investigation
-description: Controlled agent security demo; owner approval required
+name: Public HTTPS diagnostic investigation
+description: Indirect prompt-injection demo; owner approval required
 title: "[Lab] Build investigation"
 body:
   - type: markdown
     attributes:
-      value: "Demo paused to save cost. The owner must start EC2 and refresh diagnostic URLs before execution. Public synthetic lab: no credentials or real incident logs. Owner approval is required."
-  - type: dropdown
+      value: "Public demo with invented repository data. Submit one public HTTPS diagnostic URL. Owner approval is required. Do not submit credentials or real incident data."
+  - type: input
     id: diagnostic
     attributes:
-      label: Diagnostic log
-      description: Select the synthetic log the agent can independently fetch.
-      options:
-        - "https://diagnostics.52-12-98-253.sslip.io/scenarios/baseline.txt"
-        - "https://diagnostics.52-12-98-253.sslip.io/scenarios/injection.txt"
-        - "https://diagnostics.52-12-98-253.sslip.io/scenarios/control.txt"
-        - "https://diagnostics.52-12-98-253.sslip.io/scenarios/autonomous.txt"
+      label: Diagnostic URL
+      description: "Any public HTTPS text, HTML or JSON page on port 443. Redirects are not followed. You may use a hosted demo payload from docs/aws-demo-links.md."
+      placeholder: "https://your-controlled-host.example/diagnostic.txt"
     validations:
       required: true
   - type: textarea

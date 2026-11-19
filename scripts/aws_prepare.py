@@ -15,10 +15,10 @@ def archive(destination, entries):
 
 def main():
     build=ROOT/'infrastructure/aws/.build'
-    roots=('agent','dashboard')
+    roots=('agent','dashboard','demo-data')
     names=[p.relative_to(ROOT).as_posix() for root in roots for p in (ROOT/root).rglob('*')
            if p.is_file() and not p.is_symlink() and '__pycache__' not in p.parts
-           and p.suffix in ('.py','.txt','.html','.js','.css')]
+           and p.suffix in ('.py','.txt','.html','.js','.css','.json')]
     names+=['endpoints/__init__.py','endpoints/diagnostics/content.py','scripts/__init__.py',
             'scripts/aws_cli.py','scripts/aws_instance_job.py']
     archive(build/'runtime.zip',{n:(ROOT/n).read_bytes() for n in names})
