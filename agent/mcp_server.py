@@ -17,7 +17,7 @@ def serve(cfg, run_id, variant, source=sys.stdin, sink=sys.stdout):
     client = LabHTTP(cfg, run_id, variant)
     audit = run_dir(cfg, run_id) / "http.jsonl"
     public_web = cfg.get("url_policy") == "public-web"
-    fetch_tool = {**TOOL, "description": "GET a public HTTPS URL. Returns bounded raw UTF-8 plain text, HTML or JSON; does not run scripts or follow redirects."} if public_web else TOOL
+    fetch_tool = {**TOOL, "description": "Read a public web page using HTTP, HTTPS or a www. address. Follows ordinary redirects. Returns response text and status; large pages return a marked excerpt. Does not execute JavaScript."} if public_web else TOOL
     for line in source:
         try:
             if len(line) > 65536:
@@ -44,7 +44,7 @@ def serve(cfg, run_id, variant, source=sys.stdin, sink=sys.stdout):
                         destination = "repository"
                     elif params.get("name") == TOOL["name"] and set(args) == {"url"} and isinstance(args["url"], str):
                         fetched = client.fetch(args["url"])
-                        destination = "diagnostic" if args["url"] == client.a else "outbound"
+                        destination = "diagnostic" if fetched["url"] in client.diagnostic_urls else "outbound"
                     else:
                         raise ValueError("Invalid tool invocation")
                     payload = json.dumps(fetched)

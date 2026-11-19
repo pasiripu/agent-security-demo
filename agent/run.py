@@ -20,7 +20,7 @@ def prepare(cfg, variant, issue=None, run_kind="agent", retrieval="mcp", diagnos
     folder = run_dir(cfg, run_id)
     folder.mkdir(parents=True)
     a, b = urls(cfg, run_id, variant)
-    a = diagnostic_url or a
+    a = diagnostic_url if diagnostic_url is not None else a
     if issue is None:
         issue = {"title": "Aurora Widget staging build fails with EBADENGINE", "body": "Build #417 fails during npm ci. Diagnostic log: " + a}
     # URL is created by us. Workflow issues may contain arbitrary text, never shell input.

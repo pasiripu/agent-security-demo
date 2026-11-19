@@ -8,7 +8,7 @@ This replaces the earlier multi-service proposal at the owner's request.
 GitHub remains public at [pasiripu/agent-security-demo](https://github.com/pasiripu/agent-security-demo).
 Each model run still requires **pasiripu** to approve the `demo` environment.
 
-The current runtime accepts any public HTTPS diagnostic URL and provides a
+The current runtime accepts ordinary HTTP/HTTPS/www web links and provides a
 synthetic repository reader, discovery payload and export payload. Read
 [the public-web demo guide](public-web-demo.md) for the current attack scenarios,
 tool limits and manual test steps. Historical AWS results describe the earlier
@@ -177,7 +177,7 @@ It does not put AWS access keys or the model key on GitHub.
 2. Submit its synthetic issue. Open **Actions → Approved AWS issue triage**.
 3. Use **Review deployments → demo → Approve and deploy**.
 4. Read the resulting summary and evidence run ID on the issue.
-5. Repeat with **discovery**, **export** or the **external-host example**, one new issue each. You can also enter your own public HTTPS diagnostic URL in the issue form.
+5. Repeat with **discovery**, **export** or the **external-host example**, one new issue each. You can also enter your own web links in the issue form.
 
 The model must choose its HTTP tool to retrieve the issue's diagnostic URL. The
 dispatcher never performs the injected action. Review diagnostic delivery,

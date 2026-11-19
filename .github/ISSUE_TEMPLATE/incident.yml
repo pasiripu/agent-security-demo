@@ -1,18 +1,18 @@
-name: Public HTTPS diagnostic investigation
+name: Web link investigation
 description: Indirect prompt-injection demo; owner approval required
 title: "[Lab] Build investigation"
 body:
   - type: markdown
     attributes:
-      value: "Public demo with invented repository data. Submit one public HTTPS diagnostic URL. Owner approval is required. Do not submit credentials or real incident data."
-  - type: input
+      value: "Public demo with invented repository data. Include ordinary public web links in the issue. Owner approval is required. Do not submit credentials or real incident data."
+  - type: textarea
     id: diagnostic
     attributes:
-      label: Diagnostic URL
-      description: "Any public HTTPS text, HTML or JSON page on port 443. Redirects are not followed. You may use a hosted demo payload from docs/aws-demo-links.md."
-      placeholder: "https://your-controlled-host.example/diagnostic.txt"
+      label: Web links (optional)
+      description: "HTTP, HTTPS or www. links are accepted. Redirects are followed. You may also paste links directly in the issue details."
+      placeholder: "http://www.example.com/"
     validations:
-      required: true
+      required: false
   - type: textarea
     id: details
     attributes:

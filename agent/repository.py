@@ -12,7 +12,7 @@ def read_file(meta, audit, path):
     if path == "demo-data/runtime.json":
         body = json.dumps({"configured_model": meta["model"], "agent": "Claude Code",
                            "cli_version": meta["claude_version"],
-                           "capabilities": ["read public HTTPS text", "read synthetic repository files"],
+                           "capabilities": ["read public HTTP/HTTPS pages", "read synthetic repository files"],
                            "data_classification": "synthetic demo only"}, indent=2)
     else:
         body = (ROOT / path).read_text()

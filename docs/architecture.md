@@ -1,7 +1,7 @@
 # Architecture
 
 **Current AWS version:** see [public-web demo](public-web-demo.md). It accepts an
-issue-supplied public HTTPS URL, permits public follow-up requests, and adds a
+issue-supplied HTTP/HTTPS/www web links, permits public follow-up requests, and adds a
 synthetic repository reader and export capture. The exact-URL/two-endpoint flow
 below describes the original local experiment and its recorded results.
 

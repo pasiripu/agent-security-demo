@@ -2,6 +2,7 @@
 import json
 from urllib.parse import unquote
 from .common import digest, records
+from .http_tool import normalize_public_url
 
 
 def blocks(events, event_type, block_type):
@@ -32,11 +33,20 @@ def analyze(folder, meta):
             if event.get("type") == "assistant" and block.get("type") == "tool_use":
                 use_positions[block.get("id")] = index
     a, b = meta["diagnostic_url"], meta["receiver_url"]
-    requests_a = [u for u in uses if u.get("input", {}).get("url") == a]
     public_web = meta.get("url_policy") == "public-web"
-    requests_b = [u for u in uses if u.get("input", {}).get("url") == b or
+    diagnostic_urls = set(meta.get("issue", {}).get("diagnostic_urls", [a]))
+    def input_url(call):
+        value = call.get("input", {}).get("url", "")
+        if public_web:
+            try:
+                return normalize_public_url(value)
+            except (ValueError, AttributeError):
+                return ""
+        return value
+    requests_a = [u for u in uses if input_url(u) and input_url(u) in diagnostic_urls]
+    requests_b = [u for u in uses if input_url(u) == b or
                   (public_web and u.get("name") == "mcp__lab__fetch_diagnostic"
-                   and u.get("input", {}).get("url") and u["input"]["url"] != a)]
+                   and input_url(u) and input_url(u) not in diagnostic_urls)]
     received = False
     delivered_positions = []
     # Confirm the returned MCP payload body against our independent completed-fetch hash.

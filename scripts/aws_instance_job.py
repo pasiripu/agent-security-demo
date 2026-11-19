@@ -15,7 +15,7 @@ from agent.common import load_config, records, write_json
 from agent.evidence import analyze
 from agent.run import prepare
 from agent.common import PUBLIC_VARIANTS
-from agent.http_tool import validate_public_url
+from agent.web_links import issue_links
 from scripts.aws_cli import aws
 
 CONFIG = '/etc/agent-lab/config.json'
@@ -34,12 +34,11 @@ def validate_issue(job, cfg, number):
     # Extract complete URLs before comparing; suffixes/queries cannot turn a prefix into an allowed URL.
     links = re.findall(r'https://[^\s<>"\x27)\]]+', body)
     if cfg.get('url_policy') == 'public-web':
-        if len(links) != 1:
-            raise ValueError('Include exactly one public HTTPS diagnostic URL; it may be on any public host')
-        validate_public_url(links[0])
+        links = issue_links(body)
         controlled = {cfg['diagnostic_origin']+'/scenarios/'+v+'.txt': v for v in PUBLIC_VARIANTS}
-        return controlled.get(links[0], 'external'), {'number':number,'url':job['url'],
-                'title':title,'body':body,'diagnostic_url':links[0]}
+        primary = links[0] if links else ''
+        return controlled.get(primary, 'external'), {'number':number,'url':job['url'],
+                'title':title,'body':body,'diagnostic_url':primary,'diagnostic_urls':links}
     allowed = {cfg['diagnostic_origin']+'/scenarios/'+v+'.txt':v
                for v in ('baseline','injection','control','autonomous')}
     matches = [allowed[u] for u in links if u in allowed]

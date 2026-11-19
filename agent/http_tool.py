@@ -1,4 +1,4 @@
-"""Bounded HTTPS reader: historical exact URLs or public-web demo mode."""
+"""HTTP/HTTPS web reader, preserving the historical exact-URL experiment."""
 import http.client
 import ipaddress
 import json
@@ -6,27 +6,47 @@ import re
 import socket
 import ssl
 import time
-from urllib.parse import urlsplit
+import zlib
+from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 from .common import append, digest, run_dir, urls
 
 MAX_BYTES = 32768
 
 
-def validate_public_url(url):
-    if (not isinstance(url, str) or len(url) > 4096 or
-            any(ord(c) < 33 or ord(c) > 126 for c in url) or "\\" in url):
-        raise ValueError("Use an ASCII HTTPS URL of at most 4096 characters")
+PUBLIC_MAX_BYTES = 2 * 1024 * 1024
+PUBLIC_TEXT_CHARS = 60000
+MAX_REDIRECTS = 5
+
+
+def normalize_public_url(url):
+    if not isinstance(url, str):
+        raise ValueError("Expected a web address")
+    url = url.strip()
+    if url.lower().startswith("www."):
+        url = "https://" + url
+    if (len(url) > 8192 or any(ord(c) < 33 or ord(c) == 127 for c in url) or "\\" in url):
+        raise ValueError("Invalid web address")
     parsed = urlsplit(url)
-    if (parsed.scheme != "https" or not parsed.hostname or parsed.username is not None
-            or parsed.password is not None or parsed.fragment or parsed.port not in (None, 443)
-            or not re.fullmatch(r"[a-z0-9]+(?:[a-z0-9.-]*[a-z0-9])?", parsed.hostname)):
-        raise ValueError("Use public HTTPS on port 443, without credentials or a fragment")
-    # DNS validation and pinning happen immediately before each connection.
-    return parsed
+    if (parsed.scheme not in ("http", "https") or not parsed.hostname
+            or parsed.username is not None or parsed.password is not None):
+        raise ValueError("Use an HTTP or HTTPS web address without embedded credentials")
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    if port != (443 if parsed.scheme == "https" else 80):
+        raise ValueError("The demo's web connection uses standard HTTP/HTTPS ports")
+    host = parsed.hostname.encode("idna").decode("ascii").lower()
+    if ":" in host:
+        host = "[" + host + "]"
+    return urlunsplit((parsed.scheme, host,
+                      quote(parsed.path, safe="/%:@!$&'()*+,;=-._~"),
+                      quote(parsed.query, safe="/%?:@!$&'()*+,;=-._~"), ""))
 
 
-def public_addresses(host):
-    found = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+def validate_public_url(url):
+    return urlsplit(normalize_public_url(url))
+
+
+def public_addresses(host, port=443):
+    found = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     if not found:
         raise ValueError("DNS returned no addresses")
     for _, _, _, _, address in found:
@@ -60,6 +80,23 @@ class PinnedHTTPS(http.client.HTTPSConnection):
             raise
 
 
+class PinnedHTTP(http.client.HTTPConnection):
+    def __init__(self, host, addresses):
+        super().__init__(host, timeout=8)
+        self.addresses = addresses
+
+    def connect(self):
+        family, socktype, proto, _, target = self.addresses[0]
+        raw = socket.socket(family, socktype, proto)
+        try:
+            raw.settimeout(8)
+            raw.connect(target)
+            self.sock = raw
+        except BaseException:
+            raw.close()
+            raise
+
+
 class LabHTTP:
     def __init__(self, cfg, run_id, variant):
         self.cfg, self.run_id, self.variant = cfg, run_id, variant
@@ -70,6 +107,7 @@ class LabHTTP:
             self.meta = json.loads(meta_path.read_text())
             if self.meta.get("variant") == variant:
                 self.a = self.meta["diagnostic_url"]
+        self.diagnostic_urls = set(self.meta.get("issue", {}).get("diagnostic_urls", [self.a]))
         self.audit = run_dir(cfg, run_id) / "http.jsonl"
         self.calls = 0
 
@@ -81,6 +119,11 @@ class LabHTTP:
 
     def fetch(self, url):
         self.consume()
+        if self.cfg.get("url_policy") == "public-web":
+            return self._fetch_public(url)
+        return self._fetch_exact(url)
+
+    def _fetch_exact(self, url):
         public_web = self.cfg.get("url_policy") == "public-web"
         if not public_web and url not in (self.a, self.b):
             # Do not persist arbitrary model-supplied URL data.
@@ -149,3 +192,92 @@ class LabHTTP:
         finally:
             if conn:
                 conn.close()
+
+
+    def _fetch_public(self, url):
+        try:
+            requested = normalize_public_url(url)
+        except ValueError:
+            append(self.audit, "tool_blocked", reason="invalid_web_address")
+            raise
+        destination = ("diagnostic" if requested in self.diagnostic_urls else "receiver"
+                       if urlsplit(requested).hostname == urlsplit(self.b).hostname else "external")
+        current, redirects = requested, []
+        deadline = time.monotonic() + 30
+        try:
+            for hop in range(MAX_REDIRECTS + 1):
+                conn = None
+                try:
+                    parsed = urlsplit(current)
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("Web request timed out")
+                    origin = parsed.scheme + "://" + parsed.netloc
+                    unix = self.cfg.get("unix_sockets", {}).get(origin) if self.cfg.get("transport") == "local-unix-https" else None
+                    # Revalidate and pin every redirect target, including same-host hops.
+                    addresses = None if unix else (public_addresses(parsed.hostname) if parsed.scheme == "https"
+                                                  else public_addresses(parsed.hostname, 80))
+                    if parsed.scheme == "https":
+                        context = ssl.create_default_context(cafile=self.cfg.get("ca_file"))
+                        conn = PinnedHTTPS(parsed.hostname, context, addresses, unix)
+                    else:
+                        conn = PinnedHTTP(parsed.hostname, addresses)
+                    append(self.audit, "http_attempt", url=requested, request_url=current,
+                           destination=destination, transport=self.cfg.get("transport", "public-https"))
+                    headers = {"User-Agent": "AgentSecurityLab/2", "Accept": "text/html,text/plain,application/json,*/*;q=0.5",
+                               "Accept-Encoding": "gzip, deflate"}
+                    if self.cfg.get("send_run_header") and origin in (self.cfg["diagnostic_origin"], self.cfg["receiver_origin"]):
+                        headers["X-Lab-Run"] = self.run_id
+                    target = (parsed.path or "/") + ("?" + parsed.query if parsed.query else "")
+                    conn.request("GET", target, headers=headers)
+                    response = conn.getresponse()
+                    if response.status in (301, 302, 303, 307, 308) and response.getheader("Location"):
+                        if hop == MAX_REDIRECTS:
+                            raise ValueError("Too many redirects")
+                        target = normalize_public_url(urljoin(current, response.getheader("Location")))
+                        redirects.append({"url": current, "status": response.status, "location": target})
+                        append(self.audit, "http_redirect", url=requested, request_url=current,
+                               destination=destination, status=response.status, location=target)
+                        current = target
+                        continue
+                    encoding = response.getheader("Content-Encoding", "identity").strip().lower()
+                    decoder = (zlib.decompressobj(16 + zlib.MAX_WBITS) if encoding == "gzip" else
+                               zlib.decompressobj() if encoding == "deflate" else None)
+                    if encoding not in ("identity", "", "gzip", "deflate"):
+                        raise ValueError("Unsupported response compression: " + encoding)
+                    body, truncated = bytearray(), False
+                    while not response.isclosed():
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise TimeoutError("Web request timed out")
+                        response.fp.raw._sock.settimeout(min(remaining, 4))
+                        block = response.read1(16384)
+                        if not block:
+                            break
+                        room = PUBLIC_MAX_BYTES + 1 - len(body)
+                        body.extend(decoder.decompress(block, room) if decoder else block[:room])
+                        if len(body) > PUBLIC_MAX_BYTES:
+                            truncated = True
+                            break
+                    raw = bytes(body[:PUBLIC_MAX_BYTES])
+                    content_type = response.getheader("Content-Type", "")
+                    charset = re.search(r"charset=[\"']?([a-zA-Z0-9._-]+)", content_type)
+                    try:
+                        text = raw.decode(charset.group(1) if charset else "utf-8", errors="replace")
+                    except LookupError:
+                        text = raw.decode("utf-8", errors="replace")
+                    truncated = truncated or len(text) > PUBLIC_TEXT_CHARS
+                    text = text[:PUBLIC_TEXT_CHARS]
+                    payload = {"url": requested, "final_url": current, "status": response.status,
+                               "body": text, "sha256": digest(text), "truncated": truncated,
+                               "redirects": redirects, "content_type": content_type,
+                               "source_trust": "external-untrusted", "transport": self.cfg.get("transport", "public-https")}
+                    append(self.audit, "http_completed", **{k: v for k, v in payload.items() if k not in ("source_trust", "transport")},
+                           destination=destination, bytes=len(raw), peer="local-unix" if unix else addresses[0][4][0])
+                    return payload
+                finally:
+                    if conn:
+                        conn.close()
+        except Exception as exc:
+            append(self.audit, "http_failed", url=requested, request_url=current,
+                   destination=destination, error_type=type(exc).__name__, reason=str(exc)[:200])
+            raise ValueError("Web retrieval failed: " + str(exc)[:200]) from exc
