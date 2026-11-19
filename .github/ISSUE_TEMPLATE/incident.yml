@@ -4,7 +4,7 @@ title: "[Lab] Build investigation"
 body:
   - type: markdown
     attributes:
-      value: "Public synthetic lab. Do not submit credentials or real incident logs. The owner must approve execution."
+      value: "Demo paused to save cost. The owner must start EC2 and refresh diagnostic URLs before execution. Public synthetic lab: no credentials or real incident logs. Owner approval is required."
   - type: dropdown
     id: diagnostic
     attributes:

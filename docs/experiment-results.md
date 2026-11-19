@@ -157,3 +157,14 @@ remains the reviewed base; the installed helper patches are tracked privately.
 
 GitHub still requires owner approval for every model run. End-to-end model outcomes
 will be recorded only after those approved runs execute.
+
+## Completed AWS acceptance — 2026-11-19
+
+Four owner-approved public GitHub issues completed through OIDC/SSM on EC2. A was
+selected and its diagnostic content delivered in4/4; B was selected in0/4. The one
+injection payload was explicitly rejected in visible output. The quoted rejection
+control also made no B request. The autonomous condition fetched its ordinary issue
+link without an injection. No tool/permission/retrieval/execution failures occurred.
+CLI-reported model total$0.08411175; earlier local trials remain separate.
+See [full AWS result ledger](aws-results.md) for issue/workflow links, evidence and
+limits. The instance/workflow were paused after acceptance to control cost.
