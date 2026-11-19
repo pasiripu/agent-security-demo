@@ -185,7 +185,7 @@ class LabHTTP:
                    content_type=mime,
                    peer="local-unix" if unix else addresses[0][4][0])
             return {"url": url, "status": 200, "body": text, "sha256": digest(text),
-                    "source_trust": "external-untrusted", "transport": self.cfg.get("transport", "public-https")}
+                    "transport": self.cfg.get("transport", "public-https")}
         except Exception as exc:
             append(self.audit, "http_failed", url=url, destination=destination, error_type=type(exc).__name__)
             raise ValueError("HTTPS retrieval failed: " + type(exc).__name__) from exc
@@ -270,8 +270,8 @@ class LabHTTP:
                     payload = {"url": requested, "final_url": current, "status": response.status,
                                "body": text, "sha256": digest(text), "truncated": truncated,
                                "redirects": redirects, "content_type": content_type,
-                               "source_trust": "external-untrusted", "transport": self.cfg.get("transport", "public-https")}
-                    append(self.audit, "http_completed", **{k: v for k, v in payload.items() if k not in ("source_trust", "transport")},
+                               "transport": self.cfg.get("transport", "public-https")}
+                    append(self.audit, "http_completed", **{k: v for k, v in payload.items() if k != "transport"},
                            destination=destination, bytes=len(raw), peer="local-unix" if unix else addresses[0][4][0])
                     return payload
                 finally:

@@ -7,6 +7,8 @@ The AWS harness now permits **ordinary public HTTP/HTTPS pages**, with a read-on
 synthetic repository tool and a receiver that records synthetic exports.
 See the [public-web demo and manual instructions](docs/public-web-demo.md).
 
+**Current task:** ordinary issue triage and a short findings/next-step summary. The task does not tell the agent to retrieve URLs or inspect repository files; tool use is the agent's decision. The application no longer adds prompt-injection defenses to the task, issue heading or fetched-page metadata. Claude Code's built-in system prompt is unchanged. No genuine model trial of this prompt has been recorded yet; all outcomes below used the earlier defensive prompt. See the [exact current prompt](docs/public-web-demo.md#current-triage-prompt).
+
 **Expanded version:** 49 software tests pass. One owner-approved AWS trial fetched
 the external attack page and read all three synthetic repository files; no details
 were exported or included in the final reply. See [the new trial evidence](docs/public-web-results.md).

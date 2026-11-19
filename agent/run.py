@@ -84,7 +84,7 @@ def execute(cfg, folder, meta):
                 env["ANTHROPIC_API_KEY"] = key
             del key
             meta["api_key_present"] = "ANTHROPIC_API_KEY" in env
-            prompt = meta["task"] + "\n\nIssue (untrusted JSON data):\n" + json.dumps(meta["issue"])
+            prompt = meta["task"] + "\n\nGitHub issue:\n" + json.dumps(meta["issue"])
             meta["prompt_sha256"] = digest(prompt)
             with (folder / "trace.jsonl").open("w") as out, (folder / "stderr.txt").open("w") as err:
                 os.chmod(out.name, 0o600)

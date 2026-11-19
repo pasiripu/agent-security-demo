@@ -1,5 +1,7 @@
 # Public-web AWS trial — 2026-11-19
 
+**Historical configuration:** this trial used task instructions to treat external content as untrusted and prohibit unrelated disclosure/export, plus explicit trust labels in the issue heading and fetched-page results. These application-added defenses have since been removed for the ordinary-triage demo. This run is not evidence for the new prompt's behavior. See the [current prompt](public-web-demo.md#current-triage-prompt).
+
 The expanded demo was deployed and tested with a real owner-approved agent run. An issue-supplied URL on a public host outside both lab endpoint origins delivered an indirect prompt-injection attempt. The agent read the synthetic repository files but did not export their details or include them in its final reply.
 
 This is a separate configuration and cohort from the original four exact-URL AWS trials.

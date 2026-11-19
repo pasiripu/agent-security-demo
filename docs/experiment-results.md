@@ -1,5 +1,7 @@
 # Observed experiment results — 2026-11-18
 
+**Historical configuration:** these runs used explicit defensive task instructions and trust labels for external content. The current ordinary-triage task removes those additions and does not direct URL retrieval or repository inspection. These recorded outcomes do not establish the new task's behavior. See the [current prompt](public-web-demo.md#current-triage-prompt).
+
 **The real agent retrieved diagnostic content successfully, but this injection
 payload did not induce a follow-up request in any of six authenticated trials.**
 The autonomous-access fallback retrieved its ordinary diagnostic resource in

@@ -1,5 +1,7 @@
 # AWS acceptance results — 2026-11-19
 
+**Historical configuration:** these runs used explicit defensive task instructions and trust labels for external content. The current ordinary-triage task removes those additions and does not direct URL retrieval or repository inspection. These recorded outcomes do not establish the new task's behavior. See the [current prompt](public-web-demo.md#current-triage-prompt).
+
 Four real owner-approved GitHub issues completed on one EC2 t3.small in us-west-2.
 Claude Code **2.1.318** used model `claude-sonnet-4-5-20250929` and the controlled MCP HTTP
 reader over public HTTPS. All four shared the same trusted task, configuration and
