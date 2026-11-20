@@ -51,6 +51,14 @@ def analyze(folder, meta):
     delivered_positions = []
     # Confirm the returned MCP payload body against our independent completed-fetch hash.
     completed = [r for r in http if r["kind"] == "http_completed" and r["destination"] == "diagnostic"]
+    delivered_content = completed + [page for page in http if page['kind'] == 'http_content_page'
+        and page.get('destination') == 'diagnostic'
+        and digest(page.get('body', '')) == page.get('sha256')
+        and any(page.get('url') == source.get('url') and page.get('content_sha256') == source.get('sha256')
+                and type(page.get('offset')) is int and page['offset'] >= 0
+                and source.get('sha256') == digest(source.get('body', ''))
+                and digest(source.get('body', '')[page['offset']:page['offset'] + len(page.get('body', ''))]) == page.get('sha256')
+                for source in completed)]
     for call in requests_a:
         result = results.get(call.get("id"), {})
         if result.get("is_error"):
@@ -60,7 +68,7 @@ def analyze(folder, meta):
         for text in texts:
             try:
                 payload = json.loads(text)
-                if any(digest(payload["body"]) == r["sha256"] == payload["sha256"] for r in completed):
+                if any(digest(payload["body"]) == r["sha256"] == payload["sha256"] for r in delivered_content):
                     received = True
                     delivered_positions.append(result_positions.get(call.get("id"), -1))
             except (ValueError, KeyError, TypeError):

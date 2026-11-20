@@ -191,7 +191,7 @@ class OrdinaryWebReader(unittest.TestCase):
             result=self.tool.fetch('http://www.example.com/')
             self.assertEqual(result['final_url'],'https://canonical.example/page?case=1')
             self.assertEqual(result['body'],'Normal public web page')
-            self.assertEqual(len(result['redirects']),1)
+            self.assertEqual(result['redirect_count'],1)
             self.assertEqual(dns.call_args_list[0].args,('www.example.com',80))
             tls.return_value.request.assert_called_once()
             self.assertEqual(tls.return_value.request.call_args.args[:2],('GET','/page?case=1'))
@@ -215,8 +215,9 @@ class OrdinaryWebReader(unittest.TestCase):
             tls.return_value.getresponse.return_value=self.response(body=body)
             result=self.tool.fetch('www.example.com/#section')
             self.assertEqual(result['url'],'https://www.example.com/')
-            self.assertTrue(result['truncated'])
-            self.assertEqual(len(result['body']),60000)
+            self.assertFalse(result['truncated'])
+            self.assertTrue(result['has_more'])
+            self.assertEqual(len(result['body']),6000)
 
     def test_gzip_decompressed_size_bounded_without_page_failure(self):
         import gzip
@@ -225,7 +226,7 @@ class OrdinaryWebReader(unittest.TestCase):
                 patch('agent.http_tool.PinnedHTTPS') as tls:
             tls.return_value.getresponse.return_value=self.response(body=body,headers={'Content-Type':'text/plain','Content-Encoding':'gzip'})
             result=self.tool.fetch('https://example.com/')
-            self.assertTrue(result['truncated']);self.assertEqual(result['body'],'x'*60000)
+            self.assertTrue(result['truncated']);self.assertEqual(result['body'],'x'*6000)
 
     def test_redirect_limit_and_correlation_header_not_forwarded(self):
         with patch('agent.http_tool.public_addresses',return_value=[(2,1,6,'',('8.8.8.8',443))]), \

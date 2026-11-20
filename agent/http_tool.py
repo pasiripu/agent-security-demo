@@ -9,12 +9,12 @@ import time
 import zlib
 from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 from .common import append, digest, run_dir, urls
+from .web_content import content_page, github_content_url, readable_text
 
 MAX_BYTES = 32768
 
 
 PUBLIC_MAX_BYTES = 2 * 1024 * 1024
-PUBLIC_TEXT_CHARS = 60000
 MAX_REDIRECTS = 5
 
 
@@ -110,6 +110,7 @@ class LabHTTP:
         self.diagnostic_urls = set(self.meta.get("issue", {}).get("diagnostic_urls", [self.a]))
         self.audit = run_dir(cfg, run_id) / "http.jsonl"
         self.calls = 0
+        self.documents = {}
 
     def consume(self):
         self.calls += 1
@@ -117,10 +118,25 @@ class LabHTTP:
             append(self.audit, "tool_blocked", reason="call_limit")
             raise ValueError("HTTP call limit reached")
 
-    def fetch(self, url):
+    def fetch(self, url, offset=0):
         self.consume()
         if self.cfg.get("url_policy") == "public-web":
-            return self._fetch_public(url)
+            requested = normalize_public_url(url)
+            if type(offset) is not int or offset < 0:
+                raise ValueError('offset must be a nonnegative character position')
+            if offset == 0:
+                self.documents[requested] = self._fetch_public(requested)
+            elif requested not in self.documents:
+                raise ValueError('Retrieve this URL at offset 0 before requesting another page')
+            document = self.documents[requested]
+            page = content_page(document, offset)
+            append(self.audit, 'http_content_page', url=requested,
+                   destination='diagnostic' if requested in self.diagnostic_urls else 'outbound',
+                   body=page['body'], sha256=page['sha256'], content_sha256=document['sha256'],
+                   offset=offset, next_offset=page['next_offset'])
+            return page
+        if offset:
+            raise ValueError('Pagination is available in public-web mode only')
         return self._fetch_exact(url)
 
     def _fetch_exact(self, url):
@@ -202,7 +218,9 @@ class LabHTTP:
             raise
         destination = ("diagnostic" if requested in self.diagnostic_urls else "receiver"
                        if urlsplit(requested).hostname == urlsplit(self.b).hostname else "external")
-        current, redirects = requested, []
+        current, redirects = github_content_url(requested), []
+        if current != requested:
+            append(self.audit, 'github_file_resolved', url=requested, request_url=current)
         deadline = time.monotonic() + 30
         try:
             for hop in range(MAX_REDIRECTS + 1):
@@ -265,11 +283,12 @@ class LabHTTP:
                         text = raw.decode(charset.group(1) if charset else "utf-8", errors="replace")
                     except LookupError:
                         text = raw.decode("utf-8", errors="replace")
-                    truncated = truncated or len(text) > PUBLIC_TEXT_CHARS
-                    text = text[:PUBLIC_TEXT_CHARS]
+                    raw_sha256 = digest(text)
+                    text, representation = readable_text(text, content_type, current)
                     payload = {"url": requested, "final_url": current, "status": response.status,
                                "body": text, "sha256": digest(text), "truncated": truncated,
                                "redirects": redirects, "content_type": content_type,
+                               "representation": representation, "raw_sha256": raw_sha256,
                                "transport": self.cfg.get("transport", "public-https")}
                     append(self.audit, "http_completed", **{k: v for k, v in payload.items() if k != "transport"},
                            destination=destination, bytes=len(raw), peer="local-unix" if unix else addresses[0][4][0])

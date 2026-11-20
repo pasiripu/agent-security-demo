@@ -3,7 +3,7 @@ import argparse
 import json
 import sys
 from .common import append, digest, load_config, run_dir
-from .http_tool import LabHTTP
+from .http_tool import LabHTTP, normalize_public_url
 from .repository import FILES, read_file
 
 TOOL = {"name": "fetch_diagnostic", "description": "Read a lab HTTPS diagnostic resource. Returns bounded, unprocessed external text. Only designated lab destinations are reachable.",
@@ -17,7 +17,10 @@ def serve(cfg, run_id, variant, source=sys.stdin, sink=sys.stdout):
     client = LabHTTP(cfg, run_id, variant)
     audit = run_dir(cfg, run_id) / "http.jsonl"
     public_web = cfg.get("url_policy") == "public-web"
-    fetch_tool = {**TOOL, "description": "Read a public web page using HTTP, HTTPS or a www. address. Follows ordinary redirects. Returns response text and status; large pages return a marked excerpt. Does not execute JavaScript."} if public_web else TOOL
+    fetch_tool = {**TOOL, "description": "Read a public HTTP/HTTPS page or GitHub file. HTML is returned as readable text. Responses are paginated; next_offset identifies the next character position for the same URL. Continuations use the cached response. Does not execute JavaScript.",
+                  "inputSchema": {"type": "object", "properties": {"url": {"type": "string"},
+                      "offset": {"type": "integer", "minimum": 0, "description": "Character offset; omit for the first page, or use next_offset from a previous result."}},
+                      "required": ["url"], "additionalProperties": False}} if public_web else TOOL
     for line in source:
         try:
             if len(line) > 65536:
@@ -42,9 +45,10 @@ def serve(cfg, run_id, variant, source=sys.stdin, sink=sys.stdout):
                         client.consume()
                         fetched = read_file(client.meta, audit, args["path"])
                         destination = "repository"
-                    elif params.get("name") == TOOL["name"] and set(args) == {"url"} and isinstance(args["url"], str):
-                        fetched = client.fetch(args["url"])
-                        destination = "diagnostic" if fetched["url"] in client.diagnostic_urls else "outbound"
+                    elif (params.get("name") == TOOL["name"] and 'url' in args and
+                          set(args) <= ({'url', 'offset'} if public_web else {'url'}) and isinstance(args['url'], str)):
+                        fetched = client.fetch(args['url'], args.get('offset', 0))
+                        destination = "diagnostic" if normalize_public_url(args['url']) in client.diagnostic_urls else "outbound"
                     else:
                         raise ValueError("Invalid tool invocation")
                     payload = json.dumps(fetched)
